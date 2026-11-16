@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Segmentação e Clivagem — Slides 3D</title>
+<meta name="description" content="Apresentação interativa em 3D sobre segmentação (clivagem) embrionária.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f8ecf1; --muted:#cdb4c2; --pink:#ff8fb1; --pink2:#f3a6bd; --gold:#f6c85f; --blue:#9fd8ff;
+    --panel:rgba(28,12,34,.70); --line:rgba(255,143,177,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#07040b;color:var(--ink);font-family:'Sora',system-ui,sans-serif}
+  body{display:grid;place-items:center}
+
+  .deck{
+    position:relative;width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;
+    container-type:inline-size;overflow:hidden;
+    background:
+      radial-gradient(ellipse 70% 80% at 72% 45%, #4a1a3c 0%, rgba(40,14,40,.6) 40%, transparent 75%),
+      radial-gradient(ellipse at 10% 100%, #2a0f2e 0%, transparent 60%),
+      linear-gradient(160deg,#1b0b22 0%,#0d0612 100%);
+  }
+  .deck::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 60% 50%, transparent 55%, rgba(0,0,0,.55) 100%);}
+
+  #stage{position:absolute;inset:0}
+  #stage canvas{width:100%;height:100%;display:block;cursor:grab}
+  #stage canvas:active{cursor:grabbing}
+  #labels{position:absolute;inset:0;pointer-events:none;z-index:3}
+
+  /* ---------- topo ---------- */
+  .top{position:absolute;top:0;left:0;right:0;height:7.2cqw;display:flex;align-items:center;justify-content:space-between;padding:0 2.4cqw;z-index:5}
+  .brand{display:flex;align-items:center;gap:.8cqw;font-size:.95cqw;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .brand i{width:1.3cqw;height:1.3cqw;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--pink) 45%,#8a1c40);box-shadow:0 0 1.2cqw rgba(255,143,177,.7)}
+  .tools{display:flex;gap:.6cqw;align-items:center}
+  .counter{font-size:.95cqw;color:var(--muted);margin-right:.6cqw;font-variant-numeric:tabular-nums}
+  .counter b{color:var(--ink)}
+  .ibtn{width:2.8cqw;height:2.8cqw;border-radius:50%;border:1px solid var(--line);background:rgba(30,12,36,.6);color:var(--ink);
+        font-size:1.25cqw;display:grid;place-items:center;cursor:pointer;transition:.2s}
+  .ibtn:hover{background:rgba(255,143,177,.18);border-color:var(--pink)}
+  .ibtn.on{background:rgba(255,143,177,.25);border-color:var(--pink)}
+  .progress{position:absolute;top:0;left:0;height:.28cqw;background:linear-gradient(90deg,var(--pink),var(--gold));z-index:6;transition:width .6s cubic-bezier(.6,0,.2,1);box-shadow:0 0 1cqw var(--pink)}
+
+  /* ---------- painel de texto ---------- */
+  .panel{position:absolute;left:2.6cqw;top:7.4cqw;bottom:8.6cqw;width:37cqw;z-index:4;
+    background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:1.6cqw;padding:2.3cqw 2.5cqw;overflow:auto;
+    box-shadow:0 2cqw 5cqw rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
+  .panel::-webkit-scrollbar{width:.5cqw}.panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:1cqw}
+  .inner{animation:fadeUp .65s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(1.4cqw)}to{opacity:1;transform:none}}
+  .tag{display:inline-block;font-size:.82cqw;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+       border:1px solid rgba(246,200,95,.4);padding:.35cqw .9cqw;border-radius:2cqw;margin-bottom:1.1cqw}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:3.1cqw;line-height:1.05;margin-bottom:1cqw;letter-spacing:-.01em}
+  h1 em{font-style:normal;color:var(--pink)}
+  .lead{font-size:1.28cqw;line-height:1.55;color:#f3dde6;margin-bottom:1.1cqw;font-weight:300}
+  ul{list-style:none;display:grid;gap:.65cqw;margin-bottom:1.2cqw}
+  li{font-size:1.1cqw;line-height:1.5;color:var(--muted);padding-left:1.6cqw;position:relative}
+  li::before{content:"";position:absolute;left:0;top:.62cqw;width:.6cqw;height:.6cqw;border-radius:50%;background:var(--pink);box-shadow:0 0 .6cqw var(--pink)}
+  li b,.lead b{color:var(--ink);font-weight:600}
+  .box{font-size:1.04cqw;line-height:1.5;color:#f5e6c8;background:rgba(246,200,95,.08);border-left:.3cqw solid var(--gold);
+       padding:.9cqw 1.1cqw;border-radius:0 .8cqw .8cqw 0}
+  .box b{color:var(--gold)}
+  .hint{font-size:1cqw;color:var(--muted);margin-top:1cqw}
+  kbd{font-family:inherit;font-size:.9cqw;border:1px solid var(--line);border-radius:.3cqw;padding:.05cqw .4cqw;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:1.0cqw;margin-bottom:1.1cqw}
+  th{color:var(--gold);text-align:left;font-weight:600;padding:.5cqw .5cqw;border-bottom:1px solid var(--line);font-size:.85cqw;letter-spacing:.06em;text-transform:uppercase}
+  td{padding:.55cqw .5cqw;border-bottom:1px solid rgba(255,255,255,.06);color:var(--muted);line-height:1.35}
+  td:first-child{color:var(--ink)}
+
+  /* ---------- legenda e dica do palco ---------- */
+  .hint3d{position:absolute;right:2.6cqw;top:7.6cqw;font-size:.88cqw;color:var(--muted);opacity:.8;z-index:4;pointer-events:none}
+  #cap{position:absolute;right:2.6cqw;bottom:9.2cqw;z-index:4;font-size:1.05cqw;padding:.6cqw 1.2cqw;border-radius:2cqw;
+       background:rgba(20,8,24,.75);border:1px solid var(--line);color:var(--ink);opacity:0;transform:translateY(.6cqw);transition:.35s;pointer-events:none}
+  #cap.show{opacity:1;transform:none}
+
+  /* ---------- rótulos 3D ---------- */
+  .label{position:absolute;left:0;top:0;display:flex;align-items:center;white-space:nowrap;transition:opacity .4s;will-change:transform}
+  .label .dot{width:.6cqw;height:.6cqw;border-radius:50%;background:#fff;box-shadow:0 0 .8cqw 0.2cqw rgba(255,143,177,.9);flex:none}
+  .label .ln{width:2.2cqw;height:1px;background:linear-gradient(90deg,#fff,rgba(255,255,255,.2));flex:none}
+  .label .tx{font-size:.98cqw;padding:.3cqw .7cqw;border-radius:.5cqw;background:rgba(20,8,24,.78);border:1px solid rgba(255,143,177,.45);color:#fff}
+  .label.l{flex-direction:row-reverse}
+  .label.l .ln{background:linear-gradient(270deg,#fff,rgba(255,255,255,.2))}
+  .label.c{flex-direction:column}
+  .label.c .dot,.label.c .ln{display:none}
+  .label.c .tx{font-size:.92cqw;border-color:rgba(246,200,95,.45)}
+
+  /* ---------- navegação ---------- */
+  .nav{position:absolute;left:0;right:0;bottom:0;height:8cqw;display:flex;align-items:center;justify-content:center;gap:1.4cqw;z-index:5}
+  .nbtn{height:3.6cqw;padding:0 1.6cqw;border-radius:3cqw;border:1px solid var(--line);background:rgba(30,12,36,.75);color:var(--ink);
+        font-family:inherit;font-size:1.1cqw;display:flex;align-items:center;gap:.6cqw;cursor:pointer;transition:.2s}
+  .nbtn:hover:not(:disabled){background:linear-gradient(135deg,rgba(255,143,177,.35),rgba(246,200,95,.2));border-color:var(--pink);transform:translateY(-.15cqw)}
+  .nbtn:disabled{opacity:.35;cursor:default}
+  .nbtn.next{background:linear-gradient(135deg,#ff8fb1,#e0628c);border-color:transparent;color:#1a0712;font-weight:600}
+  .nbtn.next:hover:not(:disabled){background:linear-gradient(135deg,#ffa6c1,#f07aa0)}
+  .dots{display:flex;gap:.55cqw;align-items:center;padding:0 .6cqw}
+  .dot-b{position:relative;width:1cqw;height:1cqw;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:transparent;cursor:pointer;transition:.25s;padding:0}
+  .dot-b:hover{border-color:var(--pink)}
+  .dot-b.done{background:rgba(255,143,177,.45);border-color:transparent}
+  .dot-b.act{background:var(--gold);border-color:var(--gold);transform:scale(1.35);box-shadow:0 0 .8cqw var(--gold)}
+  .dot-b .tip{position:absolute;bottom:170%;left:50%;transform:translateX(-50%);font-size:.85cqw;white-space:nowrap;background:rgba(20,8,24,.92);
+        border:1px solid var(--line);padding:.25cqw .6cqw;border-radius:.4cqw;opacity:0;pointer-events:none;transition:.2s;color:var(--ink)}
+  .dot-b:hover .tip{opacity:1}
+  .sep{width:1px;height:1.4cqw;background:var(--line);margin:0 .3cqw}
+
+  #err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:4cqw;font-size:1.4cqw;color:var(--muted);z-index:9}
+
+  /* ---------- modo retrato (celular em pé) ---------- */
+  @media (max-aspect-ratio: 1/1){
+    .deck{width:100vw;height:100vh;aspect-ratio:auto}
+    .top{height:13cqw}
+    .brand{font-size:2.6cqw}.brand i{width:3cqw;height:3cqw}
+    .counter{font-size:2.8cqw}
+    .ibtn{width:8cqw;height:8cqw;font-size:3.6cqw}
+    .panel{left:3cqw;right:3cqw;width:auto;top:auto;bottom:17cqw;height:46%;padding:5cqw;border-radius:4cqw}
+    .tag{font-size:2.4cqw;padding:1cqw 2.4cqw;margin-bottom:2.6cqw}
+    h1{font-size:7.4cqw;margin-bottom:2.4cqw}
+    .lead{font-size:3.7cqw;margin-bottom:2.6cqw}
+    li{font-size:3.4cqw;padding-left:4.4cqw}
+    li::before{width:1.7cqw;height:1.7cqw;top:1.8cqw}
+    ul{gap:1.8cqw;margin-bottom:3cqw}
+    .box{font-size:3.2cqw;padding:2.4cqw 3cqw;border-left-width:.8cqw}
+    table{font-size:3cqw} th{font-size:2.5cqw}
+    .hint,.hint3d{font-size:2.6cqw}
+    .hint3d{top:14cqw}
+    #cap{font-size:3cqw;bottom:auto;top:20cqw;right:3cqw}
+    .label .tx{font-size:2.7cqw;padding:.8cqw 1.8cqw}
+    .label .dot{width:1.6cqw;height:1.6cqw}
+    .label .ln{width:4cqw}
+    .label.c .tx{font-size:2.5cqw}
+    .nav{height:16cqw;gap:2cqw}
+    .nbtn{height:10cqw;padding:0 4cqw;font-size:3.4cqw;border-radius:6cqw}
+    .nbtn span{display:none}
+    .dots{gap:1.3cqw}
+    .dot-b{width:2.6cqw;height:2.6cqw}
+    .dot-b .tip{display:none}
+  }
+  /* ---------- abas e resumo interativo ---------- */
+  .tabs{display:flex;gap:.5cqw;margin:.2cqw 0 1.3cqw;flex-wrap:wrap}
+  .tabs button{font-family:inherit;font-size:.95cqw;padding:.45cqw 1.1cqw;border-radius:2cqw;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;transition:.2s}
+  .tabs button:hover{border-color:var(--pink);color:var(--ink)}
+  .tabs button.on{background:var(--pink);color:#1a0712;border-color:var(--pink);font-weight:600}
+  .tabc{animation:fadeUp .45s cubic-bezier(.2,.7,.2,1) both}
+  tr[data-t]{cursor:pointer}
+  tr[data-t] td{transition:background .2s}
+  tr[data-t]:hover td{background:rgba(255,143,177,.08)}
+  tr.sel td{background:rgba(246,200,95,.16);color:var(--ink)}
+  #back{position:absolute;right:2.6cqw;top:10cqw;z-index:6;display:none;height:3cqw}
+  #back.show{display:flex}
+  @media (max-aspect-ratio: 1/1){
+    .tabs button{font-size:2.9cqw;padding:1.2cqw 2.8cqw}
+    #back{top:27cqw;height:9cqw}
+    #back span{display:inline}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+  <div id="stage"></div>
+  <div id="labels"></div>
+  <div class="progress" id="progress"></div>
+
+  <header class="top">
+    <div class="brand"><i></i>Embriologia · Segmentação 3D</div>
+    <div class="tools">
+      <div class="counter" id="counter"><b>1</b> / 18</div>
+      <a class="ibtn" href="trajeto.html" title="Trajeto 3D: do ovário ao útero" style="text-decoration:none">🧭</a>
+      <button class="ibtn" id="btnReplay" title="Repetir animação (R)">↺</button>
+      <button class="ibtn on" id="btnRotate" title="Girar automaticamente (G)">⟳</button>
+      <button class="ibtn" id="btnFull" title="Tela cheia (F)">⛶</button>
+    </div>
+  </header>
+
+  <div class="hint3d">🖱 Arraste para girar · role para zoom</div>
+  <div id="cap"></div>
+  <button class="nbtn" id="back">← <span>Voltar aos zigotos</span></button>
+
+  <section class="panel" id="panel"></section>
+
+  <nav class="nav">
+    <button class="nbtn" id="prev" aria-label="Slide anterior">◀ <span>Anterior</span></button>
+    <div class="dots" id="dots"></div>
+    <button class="nbtn next" id="next" aria-label="Próximo slide"><span>Próximo</span> ▶</button>
+  </nav>
+
+  <div id="err">Não foi possível carregar o 3D.<br>Verifique a conexão com a internet (a biblioteca Three.js é carregada online).</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* =====================================================================
+   CONTEÚDO DOS SLIDES  (edite os textos aqui)
+   ===================================================================== */
+const SLIDES = [
+  { nav:'Capa', group:'intro', cam:[0,.35,4.6], build:buildCover,
+    html:`<div class="tag">Embriologia · Biologia</div>
+      <h1>Segmentação<br><em>(Clivagem)</em></h1>
+      <p class="lead">Como uma única célula — o <b>zigoto</b> — se transforma em dezenas de células <b>sem aumentar de tamanho</b>.</p>
+      <ul>
+        <li>Etapas: zigoto → 2 → 4 → 8 blastômeros → mórula → blástula.</li>
+        <li>As <b>forças</b> que dividem as células e a <b>matemática</b> por trás das divisões.</li>
+        <li>Doenças ligadas a falhas na segmentação e os tipos de segmentação nos animais.</li>
+      </ul>
+      <p class="hint">Navegue com os botões ◀ ▶ ou com as setas <kbd>←</kbd> <kbd>→</kbd> do teclado.</p>
+      <p class="hint">🧭 Veja também o <a href="trajeto.html" style="color:var(--gold)">trajeto 3D do embrião, do ovário ao útero</a>.</p>` },
+
+  { nav:'Conceito', group:'intro', cam:[0,.35,5.6], rot:false, build:buildOverview,
+    html:`<div class="tag">Conceito</div>
+      <h1>O que é a <em>segmentação</em>?</h1>
+      <p class="lead">É a sequência de <b>divisões mitóticas rápidas</b> que acontece logo depois da fecundação.</p>
+      <ul>
+        <li>As células-filhas se chamam <b>blastômeros</b>.</li>
+        <li>Não há crescimento entre as divisões: cada blastômero fica <b>menor</b>, e o volume total do embrião quase não muda.</li>
+        <li>A cada divisão, a relação <b>núcleo/citoplasma</b> aumenta.</li>
+        <li>O padrão depende da quantidade e da distribuição do <b>vitelo</b> (reserva nutritiva do ovo).</li>
+      </ul>
+      <div class="box"><b>Resumo da sequência:</b> zigoto → 2 → 4 → 8 → mórula → blástula.</div>` },
+
+  { nav:'Forças da mitose', group:'intro', cam:[0,.5,4.2], build:(c,r)=>bMitosis(c,r),
+    html:`<div class="tag">Física da célula</div>
+      <h1>As forças da <em>mitose</em></h1>
+      <p class="lead">Dividir uma célula exige <b>força mecânica</b>, gerada por proteínas que funcionam como cabos e motores.</p>
+      <ul>
+        <li><b>Microtúbulos:</b> “cabos” que crescem e encolhem (polimerização e despolimerização da tubulina) e empurram ou puxam os cromossomos.</li>
+        <li><b>Proteínas motoras:</b> dineína e cinesina “caminham” pelos microtúbulos usando a energia do <b>ATP</b>.</li>
+        <li><b>Anel contrátil:</b> filamentos de <b>actina e miosina II</b> deslizam entre si e estrangulam a célula (citocinese).</li>
+        <li><b>Adesão e tensão:</b> caderinas unem as células; a tensão do córtex dá forma ao embrião.</li>
+        <li><b>Pressão osmótica:</b> bombas de íons atraem água e inflam a blastocele.</li>
+      </ul>
+      <div class="box"><b>Regra de Hertwig:</b> a célula tende a se dividir perpendicularmente ao seu eixo mais longo.</div>` },
+
+  { nav:'Matemática', group:'intro', cam:[0,.4,5.6], rot:false, build:buildMath,
+    html:`<div class="tag">Matemática</div>
+      <h1>A matemática das <em>divisões</em></h1>
+      <p class="lead">Cada clivagem <b>dobra</b> o número de células: o crescimento é <b>exponencial</b>.</p>
+      <ul>
+        <li>Células após n divisões: <b>N = 2ⁿ</b> — uma progressão geométrica de razão 2 (1, 2, 4, 8, 16, 32…).</li>
+        <li>Volume de cada blastômero: <b>V ÷ 2ⁿ</b>. O volume total não muda.</li>
+        <li>Raio de cada blastômero: <b>r ÷ ∛2ⁿ</b>, porque o volume da esfera é V = 4/3·π·r³.</li>
+        <li>Para ~1000 células: 2¹⁰ = 1024 → cerca de <b>10 divisões</b>.</li>
+        <li>Velocidade: rã ≈ 30 min por ciclo; mosca-da-fruta ≈ 10 min; humano ≈ 12 a 24 h.</li>
+      </ul>
+      <div class="box"><b>Logaritmo:</b> n = log₂ N. Ex.: para 32 células, n = log₂ 32 = 5 divisões.</div>` },
+
+  { nav:'Zigoto', group:'fases', cam:[0,.5,4.4], build:(c,r)=>bZygote(c,r), cap:'Zigoto (2n) dentro da zona pelúcida',
+    head:`<div class="tag">Fase 1</div><h1>Zigoto</h1>`,
+    tabs:{
+      main:`<p class="lead">Célula-ovo formada pela fusão do espermatozoide com o ovócito. É <b>diploide (2n)</b>.</p>
+        <ul>
+          <li>Os <b>pronúcleos</b> masculino e feminino se aproximam e unem seus cromossomos.</li>
+          <li>Nos mamíferos, fica envolvido pela <b>zona pelúcida</b>, uma camada de glicoproteínas.</li>
+          <li>Em humanos, a primeira divisão começa cerca de <b>24–30 h</b> após a fecundação.</li>
+        </ul>
+        <div class="box"><b>Por que não cresce?</b> A segmentação acontece dentro da zona pelúcida, então o citoplasma do zigoto é apenas repartido.</div>`,
+      forces:`<p class="lead">Antes da 1ª divisão, o <b>citoesqueleto</b> já está trabalhando.</p>
+        <ul>
+          <li><b>Microtúbulos</b> crescem a partir do centrossomo trazido pelo espermatozoide (em humanos) e formam uma estrutura em estrela, o <b>áster</b>.</li>
+          <li>A proteína motora <b>dineína</b> “caminha” pelos microtúbulos e puxa os <b>pronúcleos</b> um em direção ao outro.</li>
+          <li>A energia para esse movimento vem da quebra de <b>ATP</b>.</li>
+        </ul>
+        <div class="box"><b>Detalhe:</b> cada pronúcleo duplica seu DNA antes do encontro, e o zigoto entra na mitose com os cromossomos já duplicados.</div>`,
+      math:`<p class="lead">Ponto de partida: <b>n = 0</b> divisões.</p>
+        <ul>
+          <li>Número de células: <b>2⁰ = 1</b>.</li>
+          <li>Volume da célula: <b>V</b> (100%). Raio de referência: <b>r</b>.</li>
+          <li>Cromossomos em humanos: <b>2n = 46</b> (23 de cada pronúcleo).</li>
+        </ul>
+        <div class="box">Nos próximos slides, veja como o <b>número</b>, o <b>volume</b> e o <b>raio</b> das células mudam a cada divisão.</div>` } },
+
+  { nav:'2 células', group:'fases', cam:[0,.6,4.4], build:(c,r)=>bCleave(c,r,2), cap:'1º sulco de clivagem — plano meridional',
+    head:`<div class="tag">Fase 2 · 1ª clivagem</div><h1>2 blastômeros</h1>`,
+    tabs:{
+      main:`<p class="lead">O primeiro sulco de clivagem divide o zigoto em <b>duas células</b>.</p>
+        <ul>
+          <li>Plano <b>meridional</b> (vertical): passa pelos polos animal e vegetativo.</li>
+          <li>Cada blastômero recebe metade do citoplasma do zigoto.</li>
+          <li>A divisão é <b>mitótica</b>: as duas células têm o mesmo material genético.</li>
+        </ul>
+        <div class="box"><b>Você sabia?</b> Gêmeos idênticos (monozigóticos) podem surgir quando blastômeros iniciais se separam.</div>`,
+      forces:`<p class="lead">A primeira divisão mostra todas as forças da mitose em ação.</p>
+        <ul>
+          <li><b>Fuso mitótico:</b> microtúbulos se prendem aos cinetócoros dos cromossomos e os alinham no equador (metáfase).</li>
+          <li>Na anáfase, os microtúbulos <b>encurtam</b> e as proteínas <b>dineína e cinesina</b> puxam as cromátides-irmãs para polos opostos.</li>
+          <li><b>Citocinese:</b> um anel de <b>actina e miosina II</b> se fecha como o cordão de uma bolsa e forma o sulco de clivagem.</li>
+        </ul>
+        <div class="box">Veja a animação passo a passo no slide <b>“Forças da mitose”</b>.</div>`,
+      math:`<p class="lead">Depois de <b>n = 1</b> divisão:</p>
+        <ul>
+          <li>Número de células: <b>2¹ = 2</b>.</li>
+          <li>Volume de cada uma: <b>V/2</b> (50%).</li>
+          <li>Como V = 4/3·π·r³, o novo raio é r/∛2 ≈ <b>0,79·r</b>.</li>
+        </ul>
+        <div class="box"><b>Atenção:</b> dividir o volume ao meio <b>não</b> divide o raio ao meio. Ele diminui só cerca de 21%.</div>` } },
+
+  { nav:'4 células', group:'fases', cam:[0,2.6,3.8], build:(c,r)=>bCleave(c,r,4), cap:'2º sulco — meridional, perpendicular ao 1º',
+    head:`<div class="tag">Fase 3 · 2ª clivagem</div><h1>4 blastômeros</h1>`,
+    tabs:{
+      main:`<p class="lead">O segundo plano também é <b>meridional</b>, mas <b>perpendicular</b> ao primeiro.</p>
+        <ul>
+          <li>Resultado: 4 blastômeros (vista de cima, como uma cruz).</li>
+          <li>Nos mamíferos as divisões são <b>assincrônicas</b>: pode existir um estágio de 3 células.</li>
+          <li>Nessa fase, cada blastômero ainda é <b>totipotente</b>: poderia originar um organismo inteiro.</li>
+        </ul>
+        <div class="box"><b>Tempo:</b> em humanos, o estágio de 4 células ocorre por volta do 2º dia.</div>`,
+      forces:`<p class="lead">O que decide a <b>direção</b> de cada divisão?</p>
+        <ul>
+          <li><b>Regra de Hertwig:</b> o fuso se alinha com o eixo mais longo da célula, e o novo plano de divisão fica perpendicular a ele.</li>
+          <li>Por isso o 2º plano fica perpendicular ao 1º.</li>
+          <li>A <b>adesão</b> entre as células e a pressão da zona pelúcida também influenciam o formato do embrião.</li>
+        </ul>
+        <div class="box"><b>Nos mamíferos</b> a clivagem é rotacional: uma célula divide no plano meridional e a outra no equatorial.</div>`,
+      math:`<p class="lead">Depois de <b>n = 2</b> divisões:</p>
+        <ul>
+          <li>Número de células: <b>2² = 4</b>.</li>
+          <li>Volume de cada uma: <b>V/4</b> (25%). Raio: r/∛4 ≈ <b>0,63·r</b>.</li>
+          <li>A sequência 1, 2, 4, 8… é uma <b>progressão geométrica</b> de razão q = 2.</li>
+        </ul>
+        <div class="box"><b>Fórmula:</b> depois de n divisões sincrônicas, N = 2ⁿ células.</div>` } },
+
+  { nav:'8 células', group:'fases', cam:[0,1.2,4.4], build:(c,r)=>bCleave(c,r,8), cap:'3º sulco — plano equatorial (horizontal)',
+    head:`<div class="tag">Fase 4 · 3ª clivagem</div><h1>8 blastômeros</h1>`,
+    tabs:{
+      main:`<p class="lead">O terceiro plano é <b>equatorial</b> (horizontal), perpendicular aos dois primeiros.</p>
+        <ul>
+          <li>Separa 4 células superiores (<b>polo animal</b>) de 4 inferiores (<b>polo vegetativo</b>).</li>
+          <li>Em ovos com pouco vitelo, as 8 células têm tamanhos semelhantes.</li>
+          <li>Nos mamíferos ocorre a <b>compactação</b>: as células se achatam e aderem fortemente entre si.</li>
+        </ul>
+        <div class="box"><b>Polo animal:</b> mais citoplasma e o núcleo. <b>Polo vegetativo:</b> onde o vitelo se acumula.</div>`,
+      forces:`<p class="lead">Na <b>compactação</b>, adesão e tensão trabalham juntas.</p>
+        <ul>
+          <li>A proteína de adesão <b>caderina-E</b> aumenta o contato entre as células.</li>
+          <li>A contração de <b>actomiosina</b> no córtex cria uma tensão superficial que achata as células umas contra as outras, como bolhas de sabão.</li>
+          <li><b>Junções comunicantes</b> deixam as células trocarem sinais.</li>
+        </ul>
+        <div class="box">Sem caderina-E funcionando, o embrião não compacta direito e tem dificuldade para formar o blastocisto.</div>`,
+      math:`<p class="lead">Depois de <b>n = 3</b> divisões:</p>
+        <ul>
+          <li>Número de células: <b>2³ = 8</b>.</li>
+          <li>Volume de cada uma: <b>V/8</b> (12,5%).</li>
+          <li>Raio: r/∛8 = <b>r/2</b>, exatamente metade!</li>
+          <li>Como um cubo 2 × 2 × 2: 3 planos de divisão, um em cada eixo (x, y, z).</li>
+        </ul>
+        <div class="box">∛8 = 2 porque 2 × 2 × 2 = 8.</div>` } },
+
+  { nav:'Mórula', group:'fases', cam:[0,.6,4.4], build:(c,r)=>bMorula(c,r), cap:'Mórula: 16 a 32 blastômeros',
+    head:`<div class="tag">Fase 5</div><h1>Mórula</h1>`,
+    tabs:{
+      main:`<p class="lead">Massa compacta de <b>16 a 32 blastômeros</b> que lembra uma amora (do latim <i>morum</i>).</p>
+        <ul>
+          <li>Em humanos, forma-se por volta do <b>3º–4º dia</b>, ainda na tuba uterina.</li>
+          <li>As células <b>externas</b> e <b>internas</b> começam a seguir destinos diferentes.</li>
+          <li>Continua envolvida pela zona pelúcida.</li>
+        </ul>
+        <div class="box"><b>Mórula ≈ amora:</b> o nome vem do aspecto granulado da superfície.</div>`,
+      forces:`<p class="lead">A posição da célula muda as forças que ela sente.</p>
+        <ul>
+          <li>Células <b>externas</b> ficam polarizadas (com um lado livre) e têm maior tensão no córtex.</li>
+          <li>Células <b>internas</b>, cercadas por vizinhas, têm menor tensão e tendem a ficar no centro.</li>
+          <li>Essa diferença ajuda a decidir quem vira <b>trofoblasto</b> (fora) e quem vira <b>embrioblasto</b> (dentro).</li>
+        </ul>
+        <div class="box">A forma do embrião é um equilíbrio entre <b>adesão</b> (junta as células) e <b>tensão cortical</b> (tenta deixá-las redondas).</div>`,
+      math:`<p class="lead">Depois de <b>n = 4</b> e <b>n = 5</b> divisões:</p>
+        <ul>
+          <li>Número de células: <b>2⁴ = 16</b> a <b>2⁵ = 32</b>.</li>
+          <li>Raio com 32 células: r/∛32 ≈ <b>0,31·r</b>.</li>
+          <li>A área total de membrana cresce na razão ∛N: com 32 células, cerca de <b>3,2 vezes</b> a do zigoto.</li>
+        </ul>
+        <div class="box"><b>Superfície/volume:</b> quanto menor a célula, maior essa razão, e mais fácil a troca de substâncias com o meio.</div>` } },
+
+  { nav:'Blástula', group:'fases', cam:[.4,.6,4.3], build:(c,r)=>bBlastula(c,r), cap:'Modelo em corte — gire para ver por fora',
+    head:`<div class="tag">Fase 6</div><h1>Blástula</h1>`,
+    tabs:{
+      main:`<p class="lead">Os blastômeros se organizam em uma camada ao redor de uma <b>cavidade cheia de líquido</b>.</p>
+        <ul>
+          <li><b>Blastoderme:</b> a camada de células.</li>
+          <li><b>Blastocele:</b> a cavidade interna com líquido.</li>
+          <li>Marca o <b>fim da segmentação</b>. A próxima etapa é a <b>gastrulação</b>, que forma os folhetos germinativos.</li>
+        </ul>
+        <div class="box"><b>Atenção:</b> nos mamíferos, a blástula recebe o nome de <b>blastocisto</b>.</div>`,
+      forces:`<p class="lead">A blastocele é “inflada” por <b>osmose</b>.</p>
+        <ul>
+          <li>Nas células externas, <b>bombas de sódio-potássio</b> (Na⁺/K⁺-ATPase) levam íons para o interior do embrião.</li>
+          <li>A água vai atrás dos íons por <b>osmose</b>, passando por aquaporinas.</li>
+          <li><b>Junções oclusivas</b> vedam os espaços entre as células; o líquido acumula e a <b>pressão hidrostática</b> abre a cavidade.</li>
+        </ul>
+        <div class="box">É como encher um balão: a pressão interna estica a camada de células.</div>`,
+      math:`<p class="lead">Geometria da esfera oca:</p>
+        <ul>
+          <li>Blastocisto humano no 5º dia: cerca de <b>100 a 200 células</b> (entre 2⁶ = 64 e 2⁸ = 256).</li>
+          <li>Área da esfera: <b>A = 4·π·R²</b>. Volume: <b>V = 4/3·π·R³</b>.</li>
+          <li>Ao inflar, o volume cresce mais rápido (R³) que a área (R²), então as células da blastoderme se achatam para cobrir a superfície.</li>
+        </ul>
+        <div class="box"><b>Curiosidade:</b> o corpo adulto tem ~37 trilhões de células ≈ 2⁴⁵. Na prática as divisões são desiguais e muitas células morrem e são repostas.</div>` } },
+
+  { nav:'Doenças', group:'fases', cam:[.3,.5,4.4], build:(c,r)=>bAbnormal(c,r), cap:'Embrião com clivagem anormal (modelo ilustrativo)',
+    html:`<div class="tag">Saúde</div>
+      <h1>Quando a segmentação <em>falha</em></h1>
+      <p class="lead">Erros nas primeiras divisões podem causar a perda da gestação ou alterações no bebê.</p>
+      <ul>
+        <li><b>Não disjunção na mitose:</b> o fuso separa mal os cromossomos e parte das células fica com número errado → <b>mosaicismo</b> (ex.: síndrome de Down em mosaico, síndrome de Turner em mosaico).</li>
+        <li><b>Parada da clivagem:</b> embriões com muitas alterações cromossômicas param de se dividir → <b>abortos espontâneos precoces</b>. Cerca de metade dos abortos do 1º trimestre tem alteração cromossômica.</li>
+        <li><b>Separação tardia do embrião:</b> origina gêmeos idênticos; se ocorrer muito tarde (após o ~13º dia), podem surgir <b>gêmeos unidos (siameses)</b>.</li>
+        <li><b>Gravidez ectópica:</b> o blastocisto se implanta fora do útero, geralmente na tuba uterina.</li>
+        <li><b>Mola hidatiforme:</b> crescimento anormal do trofoblasto, ligado a erros na fecundação.</li>
+      </ul>
+      <div class="box"><b>Na fertilização in vitro</b>, embriologistas avaliam a simetria dos blastômeros e a fragmentação para escolher os embriões mais saudáveis.</div>` },
+
+  { nav:'Vitelo', group:'tipos', cam:[0,.4,5.0], rot:false, build:buildEggs,
+    html:`<div class="tag">Vitelo</div>
+      <h1>O vitelo define o <em>tipo</em> de segmentação</h1>
+      <p class="lead">O vitelo é uma reserva nutritiva que <b>dificulta a divisão</b> do citoplasma: quanto mais vitelo, mais lenta ou parcial é a clivagem.</p>
+      <ul>
+        <li><b>Isolécito</b> (oligolécito): pouco vitelo, espalhado por igual → holoblástica igual.</li>
+        <li><b>Heterolécito</b> (mediolécito): vitelo médio no polo vegetativo → holoblástica desigual.</li>
+        <li><b>Telolécito</b> (megalécito): muito vitelo; citoplasma num disco → meroblástica discoidal.</li>
+        <li><b>Centrolécito:</b> vitelo no centro → meroblástica superficial.</li>
+      </ul>
+      <div class="box"><b>Holoblástica</b> = total (o ovo inteiro se divide). <b>Meroblástica</b> = parcial (só uma parte se divide).</div>` },
+
+  { nav:'Anfioxo', group:'tipos', cam:[0,.7,5.2], rot:false, build:buildAmphioxus,
+    html:`<div class="tag">Holoblástica igual</div>
+      <h1>Anfioxo</h1>
+      <p class="lead">Ovo <b>isolécito</b>: o ovo inteiro se divide e os blastômeros têm <b>tamanhos iguais</b>.</p>
+      <ul>
+        <li>Divisões regulares e sincrônicas: 2, 4, 8, 16…</li>
+        <li>Forma uma mórula e depois uma <b>celoblástula</b>: blastocele central e blastoderme com uma só camada de células.</li>
+        <li>Também ocorre em equinodermos, como o ouriço-do-mar.</li>
+      </ul>
+      <div class="box"><b>Você sabia?</b> O anfioxo é um cordado simples, muito usado como modelo para estudar o desenvolvimento.</div>` },
+
+  { nav:'Mamíferos', group:'tipos', cam:[.5,.8,4.5], build:(c,r)=>bBlastocyst(c,r), cap:'Blastocisto em corte',
+    html:`<div class="tag">Holoblástica igual</div>
+      <h1>Mamíferos</h1>
+      <p class="lead">Ovo <b>oligolécito</b> (quase sem vitelo): o embrião será nutrido pela mãe, através da placenta.</p>
+      <ul>
+        <li>Clivagem lenta, <b>assincrônica</b> e <b>rotacional</b>.</li>
+        <li>Forma o <b>blastocisto</b>: o <b>trofoblasto</b> (camada externa) origina parte da placenta; o <b>embrioblasto</b> (massa celular interna) origina o embrião; a <b>blastocele</b> é a cavidade com líquido.</li>
+        <li>Por volta do 5º dia o blastocisto “eclode” da zona pelúcida e, entre o 6º e o 7º dia, implanta-se no útero.</li>
+      </ul>
+      <div class="box"><b>Função da zona pelúcida:</b> impede que o embrião se implante cedo demais, ainda na tuba uterina.</div>` },
+
+  { nav:'Anfíbios', group:'tipos', cam:[0,.9,5.2], rot:false, build:buildAmphibian,
+    html:`<div class="tag">Holoblástica desigual</div>
+      <h1>Anfíbios</h1>
+      <p class="lead">Ovo <b>heterolécito</b>: o vitelo se concentra no polo vegetativo e deixa a divisão mais lenta ali.</p>
+      <ul>
+        <li><b>Micrômeros:</b> células pequenas e pigmentadas no polo animal.</li>
+        <li><b>Macrômeros:</b> células grandes e ricas em vitelo no polo vegetativo.</li>
+        <li>O 3º plano (equatorial) fica <b>deslocado</b> para o polo animal.</li>
+        <li>Na blástula (anfiblástula), a blastocele também fica deslocada para o polo animal.</li>
+      </ul>
+      <div class="box"><b>Exemplo clássico:</b> ovos de rã e de sapo.</div>` },
+
+  { nav:'Aves e répteis', group:'tipos', cam:[0,3.1,3.6], build:(c,r)=>bDiscoidal(c,r), cap:'Divisões só no disco germinativo',
+    html:`<div class="tag">Meroblástica discoidal</div>
+      <h1>Aves e répteis</h1>
+      <p class="lead">Ovo <b>telolécito</b>: quase todo o ovo é vitelo, e só um pequeno disco de citoplasma se divide.</p>
+      <ul>
+        <li>As divisões acontecem apenas no <b>disco germinativo</b> (a cicatrícula da gema).</li>
+        <li>Forma-se o <b>blastodisco</b>, uma lâmina de células sobre o vitelo.</li>
+        <li>O vitelo <b>não se divide</b> e serve de alimento para o embrião.</li>
+        <li>Também ocorre em peixes ósseos e em cefalópodes (polvo, lula).</li>
+      </ul>
+      <div class="box"><b>No ovo de galinha:</b> a cicatrícula é aquele pontinho esbranquiçado sobre a gema.</div>` },
+
+  { nav:'Artrópodes', group:'tipos', cam:[0,1.1,4.6], build:(c,r)=>bSuperficial(c,r),
+    html:`<div class="tag">Meroblástica superficial</div>
+      <h1>Artrópodes</h1>
+      <p class="lead">Ovo <b>centrolécito</b>: vitelo no centro e citoplasma numa camada periférica.</p>
+      <ul>
+        <li>O núcleo se divide várias vezes <b>sem dividir o citoplasma</b>, formando um <b>sincício</b>.</li>
+        <li>Os núcleos <b>migram para a periferia</b> do ovo.</li>
+        <li>Membranas se formam em volta deles → <b>blastoderme celular</b> envolvendo o vitelo central.</li>
+        <li>Exemplo: insetos, como a mosca-da-fruta (<i>Drosophila</i>).</li>
+      </ul>
+      <div class="box"><b>Observe:</b> a animação se repete e mostra as 3 etapas no canto do modelo.</div>` },
+
+  { nav:'Resumo', group:'fim', cam:[0,1.7,5.6], rot:false, build:buildSummary, cap:'👆 Clique em um zigoto para ver a segmentação dele',
+    html:`<div class="tag">Resumo interativo</div>
+      <h1>Tipos de <em>segmentação</em></h1>
+      <table>
+        <tr><th>Ovo</th><th>Segmentação</th><th>Exemplos</th></tr>
+        <tr data-t="0"><td>Isolécito</td><td>Holoblástica igual</td><td>Anfioxo, ouriço</td></tr>
+        <tr data-t="1"><td>Oligolécito</td><td>Holoblástica igual (rotacional)</td><td>Mamíferos</td></tr>
+        <tr data-t="2"><td>Heterolécito</td><td>Holoblástica desigual</td><td>Anfíbios</td></tr>
+        <tr data-t="3"><td>Telolécito</td><td>Meroblástica discoidal</td><td>Aves, répteis, peixes</td></tr>
+        <tr data-t="4"><td>Centrolécito</td><td>Meroblástica superficial</td><td>Artrópodes (insetos)</td></tr>
+      </table>
+      <div class="box"><b>Interaja:</b> clique em um zigoto no modelo 3D (ou numa linha da tabela) para ver a segmentação dele, etapa por etapa.</div>
+      <p class="hint">Em todos os casos a segmentação termina na <b>blástula</b>, que segue para a <b>gastrulação</b>.</p>` },
+];
+
+/* =====================================================================
+   MOTOR 3D
+   ===================================================================== */
+const deck = document.getElementById('deck');
+const stageEl = document.getElementById('stage');
+const labelsEl = document.getElementById('labels');
+const capEl = document.getElementById('cap');
+
+let renderer;
+try{
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+}catch(e){ document.getElementById('err').style.display='grid'; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+stageEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x170a1e, 7, 16);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+camera.position.set(0, .4, 4.6);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.enablePan = false; controls.minDistance = 2.4; controls.maxDistance = 10;
+controls.autoRotateSpeed = .9;
+
+scene.add(new THREE.HemisphereLight(0xffd6e7, 0x1a0820, .7));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(3, 4, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xff6fa0, 2.2); rim.position.set(-4, 1.5, -3); scene.add(rim);
+const fill = new THREE.PointLight(0x8fd3ff, 6, 12); fill.position.set(2, -2.5, 2); scene.add(fill);
+
+// partículas de fundo
+{
+  const n = 700, pos = new Float32Array(n*3), rnd = rng(3);
+  for(let i=0;i<n;i++){
+    const d = new THREE.Vector3(rnd()-.5, rnd()-.5, rnd()-.5).normalize().multiplyScalar(4.5 + rnd()*8);
+    pos.set([d.x, d.y, d.z], i*3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var dust = new THREE.Points(g, new THREE.PointsMaterial({ color:0xff9fc0, size:.035, transparent:true, opacity:.55, depthWrite:false }));
+  scene.add(dust);
+}
+
+/* ---------- utilitários ---------- */
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+const Z = V(0,0,1);
+const clamp = (x,a=0,b=1) => Math.min(b, Math.max(a, x));
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+const smooth = (a,b,x) => { const t = clamp((x-a)/(b-a)); return t*t*(3-2*t); };
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function fib(n){ const pts=[], g=Math.PI*(3-Math.sqrt(5));
+  for(let i=0;i<n;i++){ const y=1-(i/(n-1))*2, r=Math.sqrt(1-y*y), th=g*i; pts.push(V(Math.cos(th)*r, y, Math.sin(th)*r)); }
+  return pts; }
+
+const SG = new THREE.SphereGeometry(1, 48, 32); SG.userData.shared = true;
+const SL = new THREE.SphereGeometry(1, 18, 12); SL.userData.shared = true;
+
+const matCache = {};
+function M(color, o={}){
+  const k = color + JSON.stringify(o);
+  if(!matCache[k]){
+    const m = new THREE.MeshPhysicalMaterial(Object.assign({
+      color, roughness:.42, metalness:0, clearcoat:.7, clearcoatRoughness:.35,
+      sheen:.6, sheenRoughness:.5, sheenColor:0xffe0ea }, o));
+    m.userData.cached = true; matCache[k] = m;
+  }
+  return matCache[k];
+}
+const GLASS = o => M(0xd7ecff, Object.assign({ transparent:true, opacity:.15, depthWrite:false, roughness:.06, clearcoat:1, sheen:0 }, o));
+
+function sphere(r, mat, pos=V(), geo=SG){ const m = new THREE.Mesh(geo, mat); m.scale.setScalar(r); m.position.copy(pos); return m; }
+
+const GLOW = (()=>{ const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(128,128,0,128,128,128);
+  gr.addColorStop(0,'rgba(255,240,225,0.18)'); gr.addColorStop(.72,'rgba(255,225,210,0.5)');
+  gr.addColorStop(.94,'rgba(255,255,255,1)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,256,256); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })();
+function planeDisc(r, opacity=0){
+  return new THREE.Mesh(new THREE.CircleGeometry(r, 64), new THREE.MeshBasicMaterial({ map:GLOW, color:0xffffff, transparent:true,
+    opacity, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
+}
+
+/* ---------- animação / rótulos ---------- */
+const toV = s => typeof s === 'number' ? V(s,s,s) : s.clone();
+function anim(ctx, obj, o){
+  const a = { obj, fp:(o.fp||obj.position).clone(), tp:(o.tp||obj.position).clone(),
+    fs:toV(o.fs ?? obj.scale), ts:toV(o.ts ?? obj.scale), delay:(o.delay||0)+(ctx.off||0), dur:o.dur||1.2 };
+  obj.position.copy(a.fp); obj.scale.copy(a.fs); ctx.anims.push(a);
+}
+function label(ctx, parent, text, pos, side='r'){
+  const o = new THREE.Object3D(); o.position.copy(pos); parent.add(o); ctx.labels.push({ o, text, side });
+}
+function addZona(root, r=1.3){
+  const g = new THREE.Group();
+  g.add(sphere(r, GLASS({ side:THREE.BackSide, opacity:.10 })));
+  g.add(sphere(r, GLASS({ opacity:.16 })));
+  g.add(sphere(r*.94, GLASS({ side:THREE.BackSide, opacity:.06, color:0xffffff })));
+  root.add(g); return g;
+}
+const sub = (root, x=0, y=0, z=0, s=1) => { const g = new THREE.Group(); g.position.set(x,y,z); g.scale.setScalar(s); root.add(g); return g; };
+
+/* =====================================================================
+   CONSTRUTORES DOS MODELOS
+   ===================================================================== */
+const PINK = 0xf3a6bd, PINK2 = 0xe891ab, YOLK = 0xf5c04f, NUC = 0x8a1c40;
+
+function bZygote(ctx, root, o={}){
+  if(o.zona !== false) addZona(root);
+  const tilt = new THREE.Group(); tilt.rotation.z = o.furrow ? -.5 : 0; root.add(tilt);
+  const cyto = sphere(1, M(0xf7c3d3, { transparent:true, opacity:.6, depthWrite:false, roughness:.3, clearcoat:.9 }));
+  root.add(cyto);
+  const n1 = sphere(.2, M(NUC, { roughness:.6, clearcoat:.2 }), V(-.04,.27,.04));
+  const n2 = sphere(.19, M(NUC, { roughness:.6, clearcoat:.2 }), V(.05,-.25,-.02));
+  tilt.add(n1, n2);
+  anim(ctx, cyto, { fs:.7, ts:1, dur:1 });
+  if(o.furrow){
+    const d1 = planeDisc(1.02, .7); d1.rotation.x = Math.PI/2; tilt.add(d1);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, .012, 8, 96), new THREE.MeshBasicMaterial({ color:0xfff3e8, transparent:true, opacity:.8, blending:THREE.AdditiveBlending, depthWrite:false }));
+    ring.rotation.x = Math.PI/2; tilt.add(ring);
+    ctx.updaters.push(t => { d1.material.opacity = .55 + .25*Math.sin(t*1.8); ring.material.opacity = .5 + .3*Math.sin(t*1.8); root.position.y = Math.sin(t*.8)*.05; });
+  }
+  if(o.labels !== false){
+    label(ctx, root, 'Zona pelúcida', V(.9,-.9,.2).normalize().multiplyScalar(1.3), 'r');
+    label(ctx, tilt, 'Pronúcleos', V(-.1,.27,.1), 'l');
+    label(ctx, root, 'Citoplasma', V(.45,.6,.45), 'r');
+  }
+}
+
+const P2 = [V(-.48,0,0), V(.48,0,0)];
+const P4 = [V(-.43,0,-.43), V(-.43,0,.43), V(.43,0,-.43), V(.43,0,.43)];
+const P8 = []; for(const p of P4) for(const sy of [-1,1]) P8.push(V(p.x*.93, sy*.38, p.z*.93));
+
+function bCleave(ctx, root, n, o={}){
+  if(o.zona !== false) addZona(root);
+  let parents, kids, rP, rK;
+  if(n===2){ parents=[V()]; kids=P2; rP=.95; rK=.6; }
+  if(n===4){ parents=P2; kids=P4; rP=.6; rK=.5; }
+  if(n===8){ parents=P4; kids=P8; rP=.5; rK=.42; }
+  kids.forEach((k,i) => {
+    const par = parents.reduce((a,b) => a.distanceTo(k) < b.distanceTo(k) ? a : b);
+    const m = sphere(rK, M(i%2 ? PINK : PINK2)); root.add(m);
+    anim(ctx, m, { fp:par, tp:k, fs:rP*.98, ts:rK, delay:.3, dur:1.4 });
+  });
+  if(o.plane !== false){
+    const d = planeDisc(1.18);
+    if(n===2) d.rotation.y = Math.PI/2;
+    if(n===8) d.rotation.x = Math.PI/2;
+    root.add(d);
+    ctx.updaters.push(t => { const p = clamp((t-.05)/2.0); d.material.opacity = Math.sin(p*Math.PI)*.85; });
+  }
+  if(o.labels !== false){
+    label(ctx, root, 'Blastômero', kids[kids.length-1].clone().multiplyScalar(1.25), 'r');
+    if(n===8){ label(ctx, root, 'Polo animal', V(0,1.3,0), 'r'); label(ctx, root, 'Polo vegetativo', V(0,-1.3,0), 'l'); }
+    else label(ctx, root, 'Zona pelúcida', V(-.8,-.95,.3).normalize().multiplyScalar(1.3), 'l');
+  }
+}
+
+function bMorula(ctx, root, o={}){
+  if(o.zona !== false) addZona(root);
+  const rnd = rng(7);
+  const pts = fib(24).map(p => p.multiplyScalar(.7)).concat(fib(6).map(p => p.multiplyScalar(.24)));
+  pts.forEach((p,i) => {
+    p.add(V((rnd()-.5)*.06, (rnd()-.5)*.06, (rnd()-.5)*.06));
+    const r = i<24 ? .36 : .3;
+    const m = sphere(r, M(i%3 ? PINK : PINK2)); root.add(m);
+    anim(ctx, m, { fp:V(), tp:p, fs:.05, ts:r, delay:.1 + i*.03, dur:1.1 });
+  });
+  if(o.labels !== false){
+    label(ctx, root, 'Blastômeros', pts[5].clone().multiplyScalar(1.45), 'r');
+    label(ctx, root, 'Zona pelúcida', V(-.9,-.8,.3).normalize().multiplyScalar(1.3), 'l');
+  }
+}
+
+function flatCell(r, mat, d, pos, flat=.5){
+  const m = sphere(r, mat, pos, SL); m.quaternion.setFromUnitVectors(Z, d); m.userData.ts = V(r, r, r*flat); return m;
+}
+
+function bBlastula(ctx, root, o={}){
+  const pts = fib(170), r = .145;
+  pts.forEach(d => {
+    if(d.z > .02) return;
+    const p = d.clone().multiplyScalar(1 - r*.3);
+    const m = flatCell(r, M(o.color || PINK), d, p); root.add(m);
+    anim(ctx, m, { fp:p.clone().multiplyScalar(.35), tp:p, fs:.01, ts:m.userData.ts, delay:.15 + (1-d.y)*.45, dur:1 });
+  });
+  const cav = sphere(.86, M(0xa8dcff, { transparent:true, opacity:.14, depthWrite:false, roughness:.1, sheen:0 }));
+  root.add(cav); anim(ctx, cav, { fs:.2, ts:.86, delay:.6, dur:1.2 });
+  if(o.labels !== false){
+    label(ctx, root, 'Blastoderme', V(-.75,.6,-.1).normalize(), 'l');
+    label(ctx, root, 'Blastocele (líquido)', V(.15,-.1,.25), 'r');
+  }
+}
+
+function bBlastocyst(ctx, root, o={}){
+  if(o.zona !== false) addZona(root, 1.32);
+  const R = 1.1, rnd = rng(11);
+  fib(150).forEach(d => {
+    if(d.z > .08) return;
+    const p = d.clone().multiplyScalar(R);
+    const m = flatCell(.16, M(0xeea3b8), d, p, .42); root.add(m);
+    anim(ctx, m, { fp:p.clone().multiplyScalar(.4), tp:p, fs:.01, ts:m.userData.ts, delay:.15 + rnd()*.4, dur:1 });
+  });
+  for(let i=0;i<22;i++){
+    const p = V(0,.7,0).add(V((rnd()-.5)*.62, (rnd()-.5)*.32, (rnd()-.5)*.62));
+    if(p.length() > .92) p.setLength(.92);
+    const m = sphere(.16, M(0xc2577c)); root.add(m);
+    anim(ctx, m, { fp:V(0,.3,0), tp:p, fs:.01, ts:.16, delay:.6 + i*.03, dur:1 });
+  }
+  const cav = sphere(.98, M(0x9fd8ff, { transparent:true, opacity:.12, depthWrite:false, roughness:.1, sheen:0 }));
+  root.add(cav); anim(ctx, cav, { fs:.2, ts:.98, delay:.3, dur:1.3 });
+  if(o.labels !== false){
+    label(ctx, root, 'Zona pelúcida', V(1,-1,.25).normalize().multiplyScalar(1.32), 'r');
+    label(ctx, root, 'Trofoblasto', V(-1,-.35,-.1).normalize().multiplyScalar(1.1), 'l');
+    label(ctx, root, 'Embrioblasto', V(.2,.75,.1), 'r');
+    label(ctx, root, 'Blastocele', V(-.1,-.25,.2), 'l');
+  }
+}
+
+function bUnequal8(ctx, root){
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    const par = V(sx*.4, .05, sz*.4);
+    const a = sphere(.34, M(0x7b4257)); root.add(a);
+    anim(ctx, a, { fp:par, tp:V(sx*.3,.56,sz*.3), fs:.5, ts:.34, delay:.3, dur:1.4 });
+    const v = sphere(.58, M(0xf1cf7e, { sheenColor:0xfff4d0 })); root.add(v);
+    anim(ctx, v, { fp:par, tp:V(sx*.42,-.24,sz*.42), fs:.55, ts:.58, delay:.3, dur:1.4 });
+  }
+}
+
+function bAmphiBlastula(ctx, root){
+  const cA = new THREE.Color(0x7b4257), cV = new THREE.Color(0xf1cf7e), cc = V(0,.34,0);
+  fib(200).forEach(d => {
+    if(d.z > .15) return;
+    const t = (1-d.y)/2, q = Math.round(smooth(.3,.7,t)*6)/6;
+    const r = .085 + .1*t, p = d.clone().multiplyScalar(1 - r*.4);
+    const m = flatCell(r, M(cA.clone().lerp(cV,q).getHex()), d, p, .75); root.add(m);
+    anim(ctx, m, { fp:p.clone().multiplyScalar(.5), tp:p, fs:.01, ts:m.userData.ts, delay:.15 + t*.6, dur:1 });
+  });
+  for(const R of [.8,.62,.44,.26]){
+    fib(Math.round(140*R*R)).forEach(d => {
+      const p = d.clone().multiplyScalar(R);
+      if(p.z > .15 || p.y > .25 || p.distanceTo(cc) < .62) return;
+      const m = sphere(.12, M(0xf1cf7e, { sheenColor:0xfff4d0 }), p, SL); root.add(m);
+      anim(ctx, m, { fp:p.clone().multiplyScalar(.6), tp:p, fs:.01, ts:.12, delay:.5 + (1-R)*.4, dur:1 });
+    });
+  }
+  const cav = sphere(.52, M(0xa8dcff, { transparent:true, opacity:.25, depthWrite:false, roughness:.1, sheen:0 }), cc);
+  root.add(cav); anim(ctx, cav, { fs:.1, ts:.52, delay:.6, dur:1.2 });
+}
+
+function bDiscoidal(ctx, root, o={}){
+  const R = 1.25;
+  root.add(sphere(R, M(YOLK, { roughness:.5, clearcoat:.4, sheen:.3, sheenColor:0xfff0b0 })));
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(R+.004, 48, 12, 0, Math.PI*2, 0, Math.asin(.56/R)), M(0xfff4ea, { roughness:.6 }));
+  root.add(cap);
+  for(let i=-8;i<=8;i++) for(let j=-9;j<=9;j++){
+    const x = (i + (j%2 ? .5 : 0))*.075, z = j*.065, rr = Math.hypot(x,z);
+    if(rr > .52) continue;
+    const p = V(x, Math.sqrt((R+.02)**2 - x*x - z*z), z), d = p.clone().normalize();
+    const m = flatCell(.045, M(0xf6a3bb), d, p, .55); root.add(m);
+    anim(ctx, m, { fs:.001, ts:m.userData.ts, delay:.2 + rr*2.6, dur:.6 });
+  }
+  if(o.labels !== false){
+    label(ctx, root, 'Blastodisco', V(.35, 1.22, .15), 'r');
+    label(ctx, root, 'Vitelo (não se divide)', V(-.8,-.5,.6).normalize().multiplyScalar(R), 'l');
+  }
+}
+
+function bSuperficial(ctx, root, o={}){
+  const E = V(1.45,.85,.85), rnd = rng(5), N = 128;
+  const shell = sphere(1, M(0xfff0f5, { transparent:true, opacity:.13, depthWrite:false, roughness:.1, sheen:0 })); shell.scale.copy(E).multiplyScalar(1.05); root.add(shell);
+  const yolk = sphere(1, M(0xe9cf7a, { transparent:true, opacity:.5, depthWrite:false, sheen:0 })); yolk.scale.copy(E).multiplyScalar(.8); root.add(yolk);
+  const nuclei = [], cells = [];
+  fib(N).forEach(d => {
+    const f = d.clone().multiply(E).multiplyScalar(.93);
+    const s = V(rnd()-.5, rnd()-.5, rnd()-.5).multiplyScalar(.55).multiply(E);
+    const n = sphere(.045, M(0x5c1a33, { roughness:.6 }), s, SL); root.add(n); nuclei.push({ m:n, s, f });
+    if(d.z < .25){
+      const nrm = V(f.x/(E.x*E.x), f.y/(E.y*E.y), f.z/(E.z*E.z)).normalize();
+      const c = flatCell(.15, M(PINK, { transparent:true, opacity:.92 }), nrm, f.clone(), .35);
+      c.scale.setScalar(.0001); root.add(c); cells.push(c);
+    }
+  });
+  let lastPhase = -1;
+  const caps = ['1 · Núcleos se dividem sem dividir o citoplasma (sincício)', '2 · Núcleos migram para a periferia', '3 · Membranas se formam: blastoderme'];
+  ctx.updaters.push(t => {
+    if(t < (o.t0||0)) return;
+    const tt = (t - (o.t0||0)) % 10; let phase;
+    if(tt < 3.2){
+      phase = 0; const count = Math.min(N, 2 ** Math.floor(tt/3.2*7.99));
+      nuclei.forEach((n,i) => { n.m.visible = i < count; n.m.position.copy(n.s); });
+      cells.forEach(c => c.scale.setScalar(.0001));
+    } else if(tt < 5.8){
+      phase = 1; const p = ease((tt-3.2)/2.6);
+      nuclei.forEach(n => { n.m.visible = true; n.m.position.lerpVectors(n.s, n.f, p); });
+    } else {
+      phase = 2; const p = clamp((tt-5.8)/1.6);
+      nuclei.forEach(n => { n.m.visible = true; n.m.position.copy(n.f); });
+      cells.forEach((c,i) => { const q = ease(clamp(p*1.6 - (i/cells.length)*.6)); c.scale.copy(c.userData.ts).multiplyScalar(Math.max(q,.0001)); });
+    }
+    if(o.caption !== false && phase !== lastPhase){ lastPhase = phase; setCap((o.prefix||'') + caps[phase]); }
+  });
+  if(o.labels !== false){
+    label(ctx, root, 'Vitelo central', V(-.45,-.2,.25), 'l');
+    label(ctx, root, 'Blastoderme', V(.3,.8,-.2).normalize().multiply(E).multiplyScalar(.98), 'r');
+  }
+}
+
+function eggModel(ctx, g, i){
+  const yolkM = M(YOLK, { side:THREE.DoubleSide, roughness:.5, sheen:.2 });
+  const shellM = M(0xf7c3d3, { transparent:true, opacity:.32, depthWrite:false, roughness:.25, clearcoat:1 });
+  const nucM = M(NUC, { roughness:.6 });
+  const rnd = rng(9 + i);
+  const shell = sphere(1, shellM); g.add(shell);
+  if(i===0){
+    for(let k=0;k<60;k++){ let p; do{ p = V(rnd()*2-1, rnd()*2-1, rnd()*2-1); }while(p.length()>1); g.add(sphere(.055, M(YOLK), p.multiplyScalar(.82), SL)); }
+    g.add(sphere(.14, nucM));
+  } else if(i===1 || i===2){
+    const th = i===1 ? Math.PI*.55 : Math.PI*.2;
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(.97, 40, 20, 0, Math.PI*2, th, Math.PI-th), yolkM));
+    const lid = new THREE.Mesh(new THREE.CircleGeometry(.97*Math.sin(th), 40), yolkM);
+    lid.rotation.x = -Math.PI/2; lid.position.y = .97*Math.cos(th); g.add(lid);
+    g.add(sphere(i===1 ? .13 : .08, nucM, V(0, i===1 ? .42 : .88, 0)));
+  } else {
+    shell.scale.set(1.3,.8,.8);
+    const y2 = sphere(1, M(YOLK)); y2.scale.set(.95,.52,.52); g.add(y2);
+  }
+}
+
+function buildEggs(ctx, root){
+  const P = [[-.8,.9],[.8,.9],[-.8,-.62],[.8,-.62]];
+  const names = ['Isolécito','Heterolécito','Telolécito','Centrolécito'];
+  P.forEach(([x,y],i) => {
+    const g = sub(root, x, y, 0, .56);
+    eggModel(ctx, g, i);
+    anim(ctx, g, { fs:.001, ts:.56, delay:.2 + i*.18, dur:.9 });
+    label(ctx, g, names[i], V(0,-1.28,0), 'c');
+    ctx.updaters.push(t => { g.rotation.y = t*.4 + i*.7; g.rotation.x = .35; });
+  });
+}
+
+/* ---------- forças da mitose ---------- */
+function bMitosis(ctx, root){
+  const memM = M(0xf7c3d3, { transparent:true, opacity:.26, depthWrite:false, roughness:.25, clearcoat:1 });
+  const cA = sphere(1, memM), cB = sphere(1, memM); root.add(cA, cB);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1, .03, 10, 80), M(0xff5d8f, { roughness:.4, emissive:0x661030 }));
+  ring.rotation.y = Math.PI/2; root.add(ring);
+  const poleM = new THREE.MeshBasicMaterial({ color:0xfff1c0 });
+  const pL = new THREE.Mesh(SL, poleM), pR = new THREE.Mesh(SL, poleM);
+  pL.scale.setScalar(.06); pR.scale.setScalar(.06); root.add(pL, pR);
+  const cg = new THREE.CapsuleGeometry(.032, .16, 4, 8), rnd = rng(4);
+  const chr = [];
+  for(let k=0;k<6;k++){
+    const a = k/6*Math.PI*2, y = Math.cos(a)*.28, z = Math.sin(a)*.28, rz = (rnd()-.5)*.6;
+    const m = M(k%2 ? 0xb0144a : 0x8e2a7a, { roughness:.5 });
+    for(const side of [-1,1]){ const c = new THREE.Mesh(cg, m); c.rotation.z = rz; root.add(c); chr.push({ c, side, y, z }); }
+  }
+  const astral = [];
+  for(const sgn of [-1,1]) for(let k=0;k<9;k++) astral.push([sgn, V(sgn, (rnd()-.5)*1.6, (rnd()-.5)*1.6).normalize()]);
+  const lineGeo = new THREE.BufferGeometry();
+  lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((chr.length + astral.length)*6), 3));
+  const lineMat = new THREE.LineBasicMaterial({ color:0x9fd8ff, transparent:true, opacity:.7 });
+  const lines = new THREE.LineSegments(lineGeo, lineMat); lines.frustumCulled = false; root.add(lines);
+
+  const caps = ['Metáfase: cromossomos alinhados no equador da célula', 'Anáfase: o fuso puxa as cromátides para os polos', 'Telófase e citocinese: o anel contrátil estrangula a célula'];
+  let last = -1;
+  ctx.updaters.push(t => {
+    const tt = t % 9; let ph, pa = 0, pc = 0;
+    if(tt < 2.2) ph = 0;
+    else if(tt < 4.6){ ph = 1; pa = ease((tt-2.2)/2.4); }
+    else { ph = 2; pa = 1; pc = ease(clamp((tt-4.6)/2.6)); }
+    const s = .12*pa + .54*pc, r = 1 - .3*pc;
+    cA.position.x = -s; cB.position.x = s; cA.scale.setScalar(r); cB.scale.setScalar(r);
+    const rr = Math.sqrt(Math.max(.0004, r*r - s*s)); ring.scale.set(rr, rr, 1); ring.visible = tt > 4.3;
+    const px = .8 + .25*pc; pL.position.set(-px,0,0); pR.position.set(px,0,0);
+    chr.forEach(o => {
+      const shrink = 1 - .55*pa, j = ph===0 ? Math.sin(t*3 + o.y*9)*.012 : 0;
+      o.c.position.set(o.side*(.035 + .55*pa), o.y*shrink + j, o.z*shrink);
+    });
+    const P = lineGeo.attributes.position.array; let i = 0;
+    chr.forEach(o => { const p = o.side<0 ? pL.position : pR.position; P.set([o.c.position.x,o.c.position.y,o.c.position.z, p.x,p.y,p.z], i); i += 6; });
+    astral.forEach(([sg,d]) => { const p = sg<0 ? pL.position : pR.position; P.set([p.x,p.y,p.z, p.x+d.x*.3, p.y+d.y*.3, p.z+d.z*.3], i); i += 6; });
+    lineGeo.attributes.position.needsUpdate = true;
+    lineMat.opacity = .7*(1 - .8*pc);
+    if(ph !== last){ last = ph; setCap(caps[ph]); }
+  });
+  label(ctx, pR, 'Centrossomo (polo do fuso)', V(), 'r');
+  label(ctx, root, 'Fuso mitótico (microtúbulos)', V(.42,.18,.05), 'r');
+  label(ctx, chr[6].c, 'Cromossomos', V(), 'l');
+  label(ctx, ring, 'Anel contrátil (actina + miosina)', V(0,1,0), 'r');
+}
+
+/* ---------- matemática ---------- */
+function buildMath(ctx, root){
+  const xs = [-1.75,-1.05,-.35,.35,1.05,1.75], R = .34;
+  const sup = ['⁰','¹','²','³','⁴','⁵'], rad = ['1','0,79','0,63','0,50','0,40','0,31'];
+  xs.forEach((x,k) => {
+    const n = 2**k, g = sub(root, x, x*.2, 0, 1);
+    const r = R*Math.pow(n, -1/3), d = n===1 ? 0 : Math.max(r*.95, R - r*.8);
+    const pts = n===1 ? [V()] : n===8 ? P8.map(p => p.clone().normalize().multiplyScalar(d)) : fib(n).map(p => p.multiplyScalar(d));
+    pts.forEach((p,i) => {
+      const m = sphere(r, M(i%2 ? PINK : PINK2), p, n>8 ? SL : SG); g.add(m);
+      anim(ctx, m, { fp:V(), tp:p, fs:.001, ts:r, delay:.2 + k*.35, dur:.9 });
+    });
+    label(ctx, g, `2${sup[k]} = ${n}`, V(0,-.64,0), 'c');
+    label(ctx, g, `raio ×${rad[k]}`, V(0,.64,0), 'c');
+    ctx.updaters.push(t => { g.rotation.y = t*.5 + k; g.rotation.x = .3; });
+  });
+}
+
+/* ---------- embrião anormal ---------- */
+function bAbnormal(ctx, root){
+  addZona(root);
+  const MOS = 0x9b7fd1;
+  const cells = [[-.42,.28,.1,.5,PINK],[.42,.36,-.12,.4,PINK2],[.12,-.42,.3,.44,PINK],[-.34,-.38,-.36,.36,MOS],
+                 [.52,-.22,-.32,.3,PINK2],[.02,.56,-.45,.28,MOS],[.58,.42,.42,.2,PINK]];
+  const cm = cells.map(([x,y,z,r,c],i) => {
+    const p = V(x,y,z), m = sphere(r, M(c)); root.add(m);
+    anim(ctx, m, { fp:V(), tp:p, fs:.05, ts:r, delay:.15 + i*.08, dur:1.1 });
+    return { p, r };
+  });
+  const rnd = rng(13), frags = [];
+  while(frags.length < 18){
+    const p = V(rnd()*2-1, rnd()*2-1, rnd()*2-1).multiplyScalar(1.05);
+    const r = .04 + rnd()*.05;
+    if(p.length() + r > 1.2 || cm.some(c => c.p.distanceTo(p) < c.r + r*.6)) continue;
+    const m = sphere(r, M(0xf7d2dc, { roughness:.6 }), p, SL); root.add(m);
+    anim(ctx, m, { fs:.001, ts:r, delay:.9 + frags.length*.04, dur:.6 }); frags.push(p);
+  }
+  label(ctx, root, 'Blastômero aneuploide (mosaico)', cm[3].p.clone().add(V(-.25,-.2,.15)), 'l');
+  label(ctx, root, 'Fragmentos citoplasmáticos', frags[0], frags[0].x < 0 ? 'l' : 'r');
+  label(ctx, root, 'Blastômeros de tamanhos desiguais', cm[0].p.clone().add(V(-.2,.35,.15)), 'l');
+  label(ctx, root, 'Blastômero normal', cm[1].p.clone().add(V(.2,.2,.1)), 'r');
+}
+
+/* ---------- slides compostos ---------- */
+function buildCover(ctx, root){
+  bZygote(ctx, root, { furrow:true, labels:false });
+  const n = 420, rnd = rng(21);
+  const im = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.07, .55, 4, 10), M(0xb85a85, { roughness:.55, clearcoat:.3 }), n);
+  const data = [];
+  for(let i=0;i<n;i++) data.push({ x:(rnd()-.5)*9, z:-5 + rnd()*7, ry:rnd()*6, tx:(rnd()-.5)*.4, tz:(rnd()-.5)*.4, ph:rnd()*6, h:.6 + rnd()*.7 });
+  root.add(im);
+  const dm = new THREE.Object3D();
+  ctx.updaters.push(t => {
+    data.forEach((d,i) => {
+      dm.position.set(d.x, -2.35 + d.h*.3, d.z);
+      dm.rotation.set(d.tx + Math.sin(t*1.2 + d.ph)*.12, d.ry, d.tz + Math.cos(t + d.ph)*.12);
+      dm.scale.set(1, d.h, 1); dm.updateMatrix(); im.setMatrixAt(i, dm.matrix);
+    });
+    im.instanceMatrix.needsUpdate = true;
+  });
+}
+
+function buildOverview(ctx, root){
+  const names = ['Zigoto','2 células','4 células','8 células','Mórula'];
+  const xs = [-1.6,-.8,0,.8,1.6];
+  names.forEach((nm,i) => {
+    const g = sub(root, xs[i], xs[i]*.22, 0, .3);
+    ctx.off = .25 + i*.35;
+    if(i===0) bZygote(ctx, g, { labels:false });
+    else if(i<4) bCleave(ctx, g, [0,2,4,8][i], { labels:false, plane:false });
+    else bMorula(ctx, g, { labels:false });
+    ctx.off = 0;
+    label(ctx, g, nm, V(0,-1.75,0), 'c');
+    ctx.updaters.push(t => { g.rotation.y = t*.45 + i; g.rotation.x = .25; });
+  });
+}
+
+function buildAmphioxus(ctx, root){
+  const a = sub(root, -1.0, 0, 0, .62), b = sub(root, 1.0, 0, 0, .62);
+  bCleave(ctx, a, 8, { zona:false, plane:false, labels:false });
+  bBlastula(ctx, b, { labels:false });
+  label(ctx, a, '8 blastômeros iguais', V(0,-1.55,0), 'c');
+  label(ctx, b, 'Celoblástula (em corte)', V(0,-1.55,0), 'c');
+  label(ctx, b, 'Blastocele', V(.1,0,.2), 'r');
+  ctx.updaters.push(t => { a.rotation.y = t*.4; a.rotation.x = .3; b.rotation.y = Math.sin(t*.5)*.6; });
+}
+
+function buildAmphibian(ctx, root){
+  const a = sub(root, -1.05, 0, 0, .7), b = sub(root, 1.05, 0, 0, .7);
+  bUnequal8(ctx, a); bAmphiBlastula(ctx, b);
+  label(ctx, a, 'Micrômeros (polo animal)', V(.3,.85,.3), 'r');
+  label(ctx, a, 'Macrômeros (vitelo)', V(-.5,-.75,.4), 'l');
+  label(ctx, a, '8 células desiguais', V(0,-1.45,0), 'c');
+  label(ctx, b, 'Blastocele deslocada', V(-.1,.35,.1), 'l');
+  label(ctx, b, 'Anfiblástula (em corte)', V(0,-1.45,0), 'c');
+  ctx.updaters.push(t => { a.rotation.y = t*.4; a.rotation.x = .15; b.rotation.y = Math.sin(t*.5)*.55; });
+}
+
+/* ---------- resumo interativo: clicar no zigoto mostra a segmentação ---------- */
+function seqStages(c, g, typeName, stages, D=2.4){
+  const groups = stages.map(([nm,fn],k) => { const s = sub(g); c.off = k*D; fn(c, s); c.off = 0; return s; });
+  let last = -1;
+  c.updaters.push(t => {
+    const k = Math.min(stages.length-1, Math.floor(t/D));
+    groups.forEach((s,j) => s.visible = j === k);
+    if(k !== last){ last = k; if(!stages[k][2]) setCap(`${typeName} · ${stages[k][0]}  (${k+1}/${stages.length})`); }
+    g.rotation.y = t*.3;
+  });
+}
+const noLab = { zona:false, plane:false, labels:false };
+const TYPES = [
+  { name:'Anfioxo', egg:(c,g)=>eggModel(c,g,0), seq:(c,g)=>seqStages(c,g,'Anfioxo',[
+      ['Zigoto isolécito', (c,s)=>bZygote(c,s,{zona:false,labels:false})],
+      ['2 células', (c,s)=>bCleave(c,s,2,noLab)], ['4 células', (c,s)=>bCleave(c,s,4,noLab)],
+      ['8 células iguais', (c,s)=>bCleave(c,s,8,noLab)], ['Mórula', (c,s)=>bMorula(c,s,{zona:false,labels:false})],
+      ['Celoblástula', (c,s)=>bBlastula(c,s)] ]) },
+  { name:'Mamíferos', egg:(c,g)=>bZygote(c,g,{labels:false}), seq:(c,g)=>seqStages(c,g,'Mamíferos',[
+      ['Zigoto oligolécito', (c,s)=>bZygote(c,s,{labels:false})],
+      ['2 células', (c,s)=>bCleave(c,s,2,{plane:false,labels:false})], ['4 células', (c,s)=>bCleave(c,s,4,{plane:false,labels:false})],
+      ['8 células', (c,s)=>bCleave(c,s,8,{plane:false,labels:false})], ['Mórula', (c,s)=>bMorula(c,s,{labels:false})],
+      ['Blastocisto', (c,s)=>bBlastocyst(c,s)] ]) },
+  { name:'Anfíbios', egg:(c,g)=>eggModel(c,g,1), seq:(c,g)=>seqStages(c,g,'Anfíbios',[
+      ['Zigoto heterolécito', (c,s)=>eggModel(c,s,1)],
+      ['8 células desiguais', (c,s)=>{ bUnequal8(c,s); label(c,s,'Micrômeros',V(.3,.85,.3),'r'); label(c,s,'Macrômeros',V(-.5,-.75,.4),'l'); }],
+      ['Anfiblástula', (c,s)=>{ bAmphiBlastula(c,s); label(c,s,'Blastocele deslocada',V(-.1,.35,.1),'l'); }] ], 3) },
+  { name:'Aves e répteis', egg:(c,g)=>eggModel(c,g,2), seq:(c,g)=>seqStages(c,g,'Aves e répteis',[
+      ['Zigoto telolécito', (c,s)=>eggModel(c,s,2)],
+      ['Blastodisco sobre o vitelo', (c,s)=>{ s.rotation.x = .5; bDiscoidal(c,s); }] ], 2.6) },
+  { name:'Artrópodes', egg:(c,g)=>eggModel(c,g,3), seq:(c,g)=>seqStages(c,g,'Artrópodes',[
+      ['Zigoto centrolécito', (c,s)=>eggModel(c,s,3)],
+      ['Blastoderme superficial', (c,s)=>bSuperficial(c,s,{t0:2.4, prefix:'Artrópodes · '}), true] ]) },
+];
+
+function buildSummary(ctx, root){
+  const ring = sub(root), focus = sub(root, 0, 0, 0, 1.1);
+  const items = TYPES.map((T,i) => {
+    const a = i*Math.PI*2/TYPES.length;
+    const g = sub(ring, Math.sin(a)*1.9, 0, Math.cos(a)*1.9, .36); g.rotation.y = a; g.userData.pick = i;
+    ctx.off = .2 + i*.15; T.egg(ctx, g); ctx.off = 0;
+    label(ctx, g, T.name, V(0,-1.6,0), 'c');
+    return g;
+  });
+  ctx.pickables = items;
+  let ringS = 1, ringT = 1, ang = 0, lastT = 0, open = null;
+  ctx.updaters.push(t => {
+    const dt = t - lastT; lastT = t;
+    if(ctx.hover < 0 || ctx.hover === undefined) ang += dt*.22;
+    ring.rotation.y = ang;
+    ringS += (ringT - ringS)*Math.min(1, dt*7); ring.scale.setScalar(Math.max(ringS,.001)); ring.visible = ringS > .03; ring.userData.hidden = ringT === 0;
+    items.forEach((g,i) => { const s = ctx.hover === i ? .44 : .36; g.scale.setScalar(g.scale.x + (s - g.scale.x)*.2); });
+  });
+  function clearFocus(){
+    if(!open) return;
+    ctx.players.splice(ctx.players.indexOf(open.player), 1);
+    open.pc.labels.forEach(l => { l.el.remove(); ctx.labels.splice(ctx.labels.indexOf(l), 1); });
+    while(focus.children.length){ const ch = focus.children[0]; disposeRoot(ch); focus.remove(ch); }
+    open = null;
+  }
+  ctx.onPick = i => {
+    clearFocus();
+    const pc = { anims:[], labels:[], updaters:[], off:0 };
+    const g = sub(focus);
+    TYPES[i].seq(pc, g);
+    anim(pc, g, { fs:.5, ts:1, dur:.7 });
+    mountLabels(pc.labels); ctx.labels.push(...pc.labels);
+    open = { pc, player:{ ctx:pc, start:clock.getElapsedTime() } }; ctx.players.push(open.player);
+    ringT = 0; ctx.pickables = []; ctx.hover = -1; renderer.domElement.style.cursor = '';
+    backBtn.classList.add('show'); markRow(i);
+  };
+  ctx.onBack = () => {
+    clearFocus(); ringT = 1; ctx.pickables = items;
+    backBtn.classList.remove('show'); markRow(-1);
+    setCap(SLIDES[cur].cap);
+  };
+}
+
+/* =====================================================================
+   NAVEGAÇÃO E LAÇO DE RENDERIZAÇÃO
+   ===================================================================== */
+const panel = document.getElementById('panel');
+const dotsEl = document.getElementById('dots');
+const prevB = document.getElementById('prev'), nextB = document.getElementById('next');
+const counter = document.getElementById('counter'), progress = document.getElementById('progress');
+const rotB = document.getElementById('btnRotate');
+const backBtn = document.getElementById('back');
+const N = SLIDES.length;
+let cur = -1, root = null, ctx = null, slideStart = 0, autoRot = true;
+let camFrom = V(), camTo = V(), camT0 = -1;
+const clock = new THREE.Clock();
+let W = 1, H = 1;
+
+SLIDES.forEach((s,i) => {
+  if(i > 0 && s.group !== SLIDES[i-1].group){ const sp = document.createElement('span'); sp.className='sep'; dotsEl.appendChild(sp); }
+  const b = document.createElement('button'); b.className = 'dot-b'; b.setAttribute('aria-label', s.nav);
+  b.innerHTML = `<span class="tip">${i+1}. ${s.nav}</span>`; b.onclick = () => goTo(i); dotsEl.appendChild(b);
+});
+const dotBtns = [...dotsEl.querySelectorAll('.dot-b')];
+
+let capText = '';
+function setCap(t){ t = t || ''; if(t === capText) return; capText = t; capEl.textContent = t; capEl.classList.toggle('show', !!t); }
+
+function disposeRoot(r){
+  r.traverse(o => {
+    if(o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if(!m.userData.cached) m.dispose(); }); }
+  });
+  scene.remove(r);
+}
+
+function mountLabels(list){
+  const now = clock.getElapsedTime();
+  list.forEach(l => {
+    const el = document.createElement('div'); el.className = 'label ' + l.side;
+    el.innerHTML = `<span class="dot"></span><span class="ln"></span><span class="tx">${l.text}</span>`;
+    el.style.opacity = 0; labelsEl.appendChild(el); l.el = el; l.born = now;
+  });
+}
+
+// reduz o texto automaticamente se ele não couber no painel
+function fitPanel(){
+  const inner = panel.querySelector('.inner'); if(!inner) return;
+  let z = 1; inner.style.zoom = 1;
+  while(panel.scrollHeight > panel.clientHeight + 1 && z > .72){ z -= .03; inner.style.zoom = z; }
+  panel.scrollTop = 0;
+}
+addEventListener('resize', () => fitPanel());
+
+function markRow(i){ panel.querySelectorAll('tr[data-t]').forEach(tr => tr.classList.toggle('sel', +tr.dataset.t === i)); }
+
+function renderPanel(S){
+  if(!S.tabs){ panel.innerHTML = `<div class="inner">${S.html}</div>`; }
+  else {
+    const keys = [['main','Explicação'],['forces','⚙ Forças'],['math','∑ Matemática']];
+    panel.innerHTML = `<div class="inner">${S.head}
+      <div class="tabs" role="tablist">${keys.map(([k,n],j) => `<button role="tab" data-k="${k}" class="${j ? '' : 'on'}">${n}</button>`).join('')}</div>
+      <div class="tabc">${S.tabs.main}</div></div>`;
+    const btns = panel.querySelectorAll('.tabs button');
+    btns.forEach(b => b.onclick = () => {
+      btns.forEach(x => x.classList.toggle('on', x === b));
+      const c = panel.querySelector('.tabc'); c.innerHTML = S.tabs[b.dataset.k];
+      c.style.animation = 'none'; void c.offsetWidth; c.style.animation = '';
+      fitPanel();
+    });
+  }
+  fitPanel();
+  panel.querySelectorAll('tr[data-t]').forEach(tr => tr.onclick = () => ctx.onPick?.(+tr.dataset.t));
+}
+
+function goTo(i, force=false){
+  i = Math.max(0, Math.min(N-1, i));
+  if(i === cur && !force) return;
+  cur = i;
+  if(root) disposeRoot(root);
+  ctx = { anims:[], labels:[], updaters:[], players:[], off:0, hover:-1 };
+  root = new THREE.Group(); scene.add(root);
+  const S = SLIDES[i];
+  setCap(S.cap || '');
+  backBtn.classList.remove('show'); renderer.domElement.style.cursor = '';
+  S.build(ctx, root);
+  anim(ctx, root, { fs:.86, ts:1, dur:.8 });
+  slideStart = clock.getElapsedTime();
+  camFrom.copy(camera.position); camTo.set(...(S.cam || [0,.6,5])).multiplyScalar(1.28); camT0 = slideStart;
+  controls.autoRotate = autoRot && S.rot !== false;
+
+  labelsEl.innerHTML = '';
+  mountLabels(ctx.labels);
+  renderPanel(S);
+  dotBtns.forEach((b,k) => { b.classList.toggle('act', k===i); b.classList.toggle('done', k<i); });
+  counter.innerHTML = `<b>${i+1}</b> / ${N}`;
+  progress.style.width = ((i+1)/N*100) + '%';
+  prevB.disabled = i === 0; nextB.disabled = i === N-1;
+  history.replaceState(null, '', '#' + (i+1));
+}
+
+prevB.onclick = () => goTo(cur-1);
+nextB.onclick = () => goTo(cur+1);
+backBtn.onclick = () => ctx.onBack?.();
+document.getElementById('btnReplay').onclick = () => goTo(cur, true);
+rotB.onclick = toggleRot;
+function toggleRot(){ autoRot = !autoRot; rotB.classList.toggle('on', autoRot); controls.autoRotate = autoRot && SLIDES[cur].rot !== false; }
+document.getElementById('btnFull').onclick = toggleFull;
+function toggleFull(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+addEventListener('keydown', e => {
+  if(['ArrowRight','PageDown',' '].includes(e.key)){ e.preventDefault(); goTo(cur+1); }
+  else if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); goTo(cur-1); }
+  else if(e.key==='Home') goTo(0);
+  else if(e.key==='End') goTo(N-1);
+  else if(e.key==='Escape') ctx.onBack?.();
+  else if(e.key==='f' || e.key==='F') toggleFull();
+  else if(e.key==='r' || e.key==='R') goTo(cur, true);
+  else if(e.key==='g' || e.key==='G') toggleRot();
+});
+controls.addEventListener('start', () => { camT0 = -1; });
+
+/* ---------- clique nos modelos 3D ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downXY = null;
+function pickAt(e){
+  if(!ctx.pickables || !ctx.pickables.length) return -1;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left)/r.width)*2 - 1, -((e.clientY - r.top)/r.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  for(const h of ray.intersectObjects(ctx.pickables, true)){
+    let o = h.object; while(o){ if(o.userData.pick !== undefined) return o.userData.pick; o = o.parent; }
+  }
+  return -1;
+}
+const cv = renderer.domElement;
+cv.addEventListener('pointerdown', e => { downXY = [e.clientX, e.clientY]; });
+cv.addEventListener('pointerup', e => {
+  if(!downXY || !ctx.onPick) return;
+  const moved = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]); downXY = null;
+  if(moved > 6) return;
+  const i = pickAt(e); if(i >= 0) ctx.onPick(i);
+});
+cv.addEventListener('pointermove', e => {
+  if(!ctx.onPick || e.buttons) return;
+  const i = pickAt(e); ctx.hover = i; cv.style.cursor = i >= 0 ? 'pointer' : '';
+});
+cv.addEventListener('pointerleave', () => { if(ctx) ctx.hover = -1; });
+
+const portraitMQ = matchMedia('(max-aspect-ratio: 1/1)');
+function resize(){
+  W = stageEl.clientWidth; H = stageEl.clientHeight;
+  renderer.setSize(W, H, false);
+  camera.aspect = W/H;
+  if(portraitMQ.matches) camera.setViewOffset(W, H, 0, H*.2, W, H);   // modelo na metade de cima
+  else camera.setViewOffset(W, H, -W*.2, 0, W, H);                     // modelo à direita do painel
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stageEl); resize();
+
+function runAnims(list, t){
+  for(const a of list){
+    const p = ease(clamp((t - a.delay)/a.dur));
+    a.obj.position.lerpVectors(a.fp, a.tp, p);
+    a.obj.scale.lerpVectors(a.fs, a.ts, p);
+  }
+}
+function shown(o){ while(o){ if(!o.visible || o.userData.hidden) return false; o = o.parent; } return true; }
+
+const tmp = V(), target0 = V();
+function loop(){
+  requestAnimationFrame(loop);
+  const now = clock.getElapsedTime(), t = now - slideStart;
+
+  runAnims(ctx.anims, t);
+  for(const u of ctx.updaters) u(t);
+  for(const p of ctx.players){ const tp = now - p.start; runAnims(p.ctx.anims, tp); for(const u of p.ctx.updaters) u(tp); }
+
+  if(camT0 >= 0){
+    const p = ease(clamp((now - camT0)/1.3));
+    camera.position.lerpVectors(camFrom, camTo, p);
+    controls.target.lerp(target0, p);
+    if(p >= 1) camT0 = -1;
+  }
+  controls.update();
+  dust.rotation.y = now*.015; dust.rotation.x = now*.007;
+  renderer.render(scene, camera);
+
+  // rótulos
+  for(const l of ctx.labels){
+    if(!shown(l.o)){ l.el.style.opacity = 0; continue; }
+    l.o.getWorldPosition(tmp);
+    const behind = tmp.distanceTo(camera.position) > camera.position.distanceTo(controls.target) + .6;
+    tmp.project(camera);
+    const x = (tmp.x*.5 + .5)*W, y = (-tmp.y*.5 + .5)*H;
+    const sh = l.side === 'l' ? 'translate(-100%,-50%)' : l.side === 'c' ? 'translate(-50%,-50%)' : 'translate(0,-50%)';
+    l.el.style.transform = `translate(${x}px,${y}px) ${sh}`;
+    l.el.style.opacity = (behind ? .2 : 1) * clamp((now - l.born - .9)/.5);
+  }
+}
+
+const start = parseInt(location.hash.slice(1)) - 1;
+goTo(isNaN(start) ? 0 : start);
+loop();
+</script>
+</body>
+</html>
