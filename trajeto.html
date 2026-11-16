@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trajeto do embrião — do ovário ao útero (3D)</title>
+<meta name="description" content="Simulação 3D interativa: ovulação, fecundação, segmentação na tuba uterina e nidação no útero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f8ecf1; --muted:#cdb4c2; --pink:#ff8fb1; --pink2:#f3a6bd; --gold:#f6c85f; --blue:#9fd8ff;
+    --panel:rgba(28,12,34,.70); --line:rgba(255,143,177,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#07040b;color:var(--ink);font-family:'Sora',system-ui,sans-serif}
+  body{display:grid;place-items:center}
+
+  .deck{
+    position:relative;width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;
+    container-type:inline-size;overflow:hidden;
+    background:
+      radial-gradient(ellipse 70% 80% at 72% 45%, #4a1a3c 0%, rgba(40,14,40,.6) 40%, transparent 75%),
+      radial-gradient(ellipse at 10% 100%, #2a0f2e 0%, transparent 60%),
+      linear-gradient(160deg,#1b0b22 0%,#0d0612 100%);
+  }
+  .deck::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 60% 50%, transparent 55%, rgba(0,0,0,.55) 100%);}
+
+  #stage{position:absolute;inset:0}
+  #stage canvas{width:100%;height:100%;display:block;cursor:grab}
+  #stage canvas:active{cursor:grabbing}
+  #labels{position:absolute;inset:0;pointer-events:none;z-index:3}
+
+  /* ---------- topo ---------- */
+  .top{position:absolute;top:0;left:0;right:0;height:7.2cqw;display:flex;align-items:center;justify-content:space-between;padding:0 2.4cqw;z-index:5}
+  .brand{display:flex;align-items:center;gap:.8cqw;font-size:.95cqw;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .brand i{width:1.3cqw;height:1.3cqw;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--pink) 45%,#8a1c40);box-shadow:0 0 1.2cqw rgba(255,143,177,.7)}
+  .tools{display:flex;gap:.6cqw;align-items:center}
+  .counter{font-size:.95cqw;color:var(--muted);margin-right:.6cqw;font-variant-numeric:tabular-nums}
+  .counter b{color:var(--ink)}
+  .ibtn{width:2.8cqw;height:2.8cqw;border-radius:50%;border:1px solid var(--line);background:rgba(30,12,36,.6);color:var(--ink);
+        font-size:1.25cqw;display:grid;place-items:center;cursor:pointer;transition:.2s}
+  .ibtn:hover{background:rgba(255,143,177,.18);border-color:var(--pink)}
+  .ibtn.on{background:rgba(255,143,177,.25);border-color:var(--pink)}
+  .progress{position:absolute;top:0;left:0;height:.28cqw;background:linear-gradient(90deg,var(--pink),var(--gold));z-index:6;transition:width .6s cubic-bezier(.6,0,.2,1);box-shadow:0 0 1cqw var(--pink)}
+
+  /* ---------- painel de texto ---------- */
+  .panel{position:absolute;left:2.6cqw;top:7.4cqw;bottom:8.6cqw;width:37cqw;z-index:4;
+    background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:1.6cqw;padding:2.3cqw 2.5cqw;overflow:auto;
+    box-shadow:0 2cqw 5cqw rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
+  .panel::-webkit-scrollbar{width:.5cqw}.panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:1cqw}
+  .inner{animation:fadeUp .65s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(1.4cqw)}to{opacity:1;transform:none}}
+  .tag{display:inline-block;font-size:.82cqw;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+       border:1px solid rgba(246,200,95,.4);padding:.35cqw .9cqw;border-radius:2cqw;margin-bottom:1.1cqw}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:3.1cqw;line-height:1.05;margin-bottom:1cqw;letter-spacing:-.01em}
+  h1 em{font-style:normal;color:var(--pink)}
+  .lead{font-size:1.28cqw;line-height:1.55;color:#f3dde6;margin-bottom:1.1cqw;font-weight:300}
+  ul{list-style:none;display:grid;gap:.65cqw;margin-bottom:1.2cqw}
+  li{font-size:1.1cqw;line-height:1.5;color:var(--muted);padding-left:1.6cqw;position:relative}
+  li::before{content:"";position:absolute;left:0;top:.62cqw;width:.6cqw;height:.6cqw;border-radius:50%;background:var(--pink);box-shadow:0 0 .6cqw var(--pink)}
+  li b,.lead b{color:var(--ink);font-weight:600}
+  .box{font-size:1.04cqw;line-height:1.5;color:#f5e6c8;background:rgba(246,200,95,.08);border-left:.3cqw solid var(--gold);
+       padding:.9cqw 1.1cqw;border-radius:0 .8cqw .8cqw 0}
+  .box b{color:var(--gold)}
+  .hint{font-size:1cqw;color:var(--muted);margin-top:1cqw}
+  kbd{font-family:inherit;font-size:.9cqw;border:1px solid var(--line);border-radius:.3cqw;padding:.05cqw .4cqw;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:1.0cqw;margin-bottom:1.1cqw}
+  th{color:var(--gold);text-align:left;font-weight:600;padding:.5cqw .5cqw;border-bottom:1px solid var(--line);font-size:.85cqw;letter-spacing:.06em;text-transform:uppercase}
+  td{padding:.55cqw .5cqw;border-bottom:1px solid rgba(255,255,255,.06);color:var(--muted);line-height:1.35}
+  td:first-child{color:var(--ink)}
+
+  /* ---------- legenda e dica do palco ---------- */
+  .hint3d{position:absolute;right:2.6cqw;top:7.6cqw;font-size:.88cqw;color:var(--muted);opacity:.8;z-index:4;pointer-events:none}
+  #cap{position:absolute;right:2.6cqw;bottom:9.2cqw;z-index:4;font-size:1.05cqw;padding:.6cqw 1.2cqw;border-radius:2cqw;
+       background:rgba(20,8,24,.75);border:1px solid var(--line);color:var(--ink);opacity:0;transform:translateY(.6cqw);transition:.35s;pointer-events:none}
+  #cap.show{opacity:1;transform:none}
+
+  /* ---------- rótulos 3D ---------- */
+  .label{position:absolute;left:0;top:0;display:flex;align-items:center;white-space:nowrap;transition:opacity .4s;will-change:transform}
+  .label .dot{width:.6cqw;height:.6cqw;border-radius:50%;background:#fff;box-shadow:0 0 .8cqw 0.2cqw rgba(255,143,177,.9);flex:none}
+  .label .ln{width:2.2cqw;height:1px;background:linear-gradient(90deg,#fff,rgba(255,255,255,.2));flex:none}
+  .label .tx{font-size:.98cqw;padding:.3cqw .7cqw;border-radius:.5cqw;background:rgba(20,8,24,.78);border:1px solid rgba(255,143,177,.45);color:#fff}
+  .label.l{flex-direction:row-reverse}
+  .label.l .ln{background:linear-gradient(270deg,#fff,rgba(255,255,255,.2))}
+  .label.c{flex-direction:column}
+  .label.c .dot,.label.c .ln{display:none}
+  .label.c .tx{font-size:.92cqw;border-color:rgba(246,200,95,.45)}
+
+  /* ---------- navegação ---------- */
+  .nav{position:absolute;left:0;right:0;bottom:0;height:8cqw;display:flex;align-items:center;justify-content:center;gap:1.4cqw;z-index:5}
+  .nbtn{height:3.6cqw;padding:0 1.6cqw;border-radius:3cqw;border:1px solid var(--line);background:rgba(30,12,36,.75);color:var(--ink);
+        font-family:inherit;font-size:1.1cqw;display:flex;align-items:center;gap:.6cqw;cursor:pointer;transition:.2s}
+  .nbtn:hover:not(:disabled){background:linear-gradient(135deg,rgba(255,143,177,.35),rgba(246,200,95,.2));border-color:var(--pink);transform:translateY(-.15cqw)}
+  .nbtn:disabled{opacity:.35;cursor:default}
+  .nbtn.next{background:linear-gradient(135deg,#ff8fb1,#e0628c);border-color:transparent;color:#1a0712;font-weight:600}
+  .nbtn.next:hover:not(:disabled){background:linear-gradient(135deg,#ffa6c1,#f07aa0)}
+  .dots{display:flex;gap:.55cqw;align-items:center;padding:0 .6cqw}
+  .dot-b{position:relative;width:1cqw;height:1cqw;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:transparent;cursor:pointer;transition:.25s;padding:0}
+  .dot-b:hover{border-color:var(--pink)}
+  .dot-b.done{background:rgba(255,143,177,.45);border-color:transparent}
+  .dot-b.act{background:var(--gold);border-color:var(--gold);transform:scale(1.35);box-shadow:0 0 .8cqw var(--gold)}
+  .dot-b .tip{position:absolute;bottom:170%;left:50%;transform:translateX(-50%);font-size:.85cqw;white-space:nowrap;background:rgba(20,8,24,.92);
+        border:1px solid var(--line);padding:.25cqw .6cqw;border-radius:.4cqw;opacity:0;pointer-events:none;transition:.2s;color:var(--ink)}
+  .dot-b:hover .tip{opacity:1}
+  .sep{width:1px;height:1.4cqw;background:var(--line);margin:0 .3cqw}
+
+  #err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:4cqw;font-size:1.4cqw;color:var(--muted);z-index:9}
+
+  /* ---------- modo retrato (celular em pé) ---------- */
+  @media (max-aspect-ratio: 1/1){
+    .deck{width:100vw;height:100vh;aspect-ratio:auto}
+    .top{height:13cqw}
+    .brand{font-size:2.6cqw}.brand i{width:3cqw;height:3cqw}
+    .counter{font-size:2.8cqw}
+    .ibtn{width:8cqw;height:8cqw;font-size:3.6cqw}
+    .panel{left:3cqw;right:3cqw;width:auto;top:auto;bottom:17cqw;height:46%;padding:5cqw;border-radius:4cqw}
+    .tag{font-size:2.4cqw;padding:1cqw 2.4cqw;margin-bottom:2.6cqw}
+    h1{font-size:7.4cqw;margin-bottom:2.4cqw}
+    .lead{font-size:3.7cqw;margin-bottom:2.6cqw}
+    li{font-size:3.4cqw;padding-left:4.4cqw}
+    li::before{width:1.7cqw;height:1.7cqw;top:1.8cqw}
+    ul{gap:1.8cqw;margin-bottom:3cqw}
+    .box{font-size:3.2cqw;padding:2.4cqw 3cqw;border-left-width:.8cqw}
+    table{font-size:3cqw} th{font-size:2.5cqw}
+    .hint,.hint3d{font-size:2.6cqw}
+    .hint3d{top:14cqw}
+    #cap{font-size:3cqw;bottom:auto;top:20cqw;right:3cqw}
+    .label .tx{font-size:2.7cqw;padding:.8cqw 1.8cqw}
+    .label .dot{width:1.6cqw;height:1.6cqw}
+    .label .ln{width:4cqw}
+    .label.c .tx{font-size:2.5cqw}
+    .nav{height:16cqw;gap:2cqw}
+    .nbtn{height:10cqw;padding:0 4cqw;font-size:3.4cqw;border-radius:6cqw}
+    .nbtn span{display:none}
+    .dots{gap:1.3cqw}
+    .dot-b{width:2.6cqw;height:2.6cqw}
+    .dot-b .tip{display:none}
+  }
+  /* ---------- abas e resumo interativo ---------- */
+  .tabs{display:flex;gap:.5cqw;margin:.2cqw 0 1.3cqw;flex-wrap:wrap}
+  .tabs button{font-family:inherit;font-size:.95cqw;padding:.45cqw 1.1cqw;border-radius:2cqw;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;transition:.2s}
+  .tabs button:hover{border-color:var(--pink);color:var(--ink)}
+  .tabs button.on{background:var(--pink);color:#1a0712;border-color:var(--pink);font-weight:600}
+  .tabc{animation:fadeUp .45s cubic-bezier(.2,.7,.2,1) both}
+  tr[data-t]{cursor:pointer}
+  tr[data-t] td{transition:background .2s}
+  tr[data-t]:hover td{background:rgba(255,143,177,.08)}
+  tr.sel td{background:rgba(246,200,95,.16);color:var(--ink)}
+  #back{position:absolute;right:2.6cqw;top:10cqw;z-index:6;display:none;height:3cqw}
+  #back.show{display:flex}
+  @media (max-aspect-ratio: 1/1){
+    .tabs button{font-size:2.9cqw;padding:1.2cqw 2.8cqw}
+    #back{top:27cqw;height:9cqw}
+    #back span{display:inline}
+  }
+  /* ---------- extras da página do trajeto ---------- */
+  a.brand{text-decoration:none}
+  a.brand:hover{color:var(--ink)}
+  .trip{position:absolute;left:50%;transform:translateX(-30%);top:2.2cqw;width:30cqw}
+  .track{position:relative;height:.35cqw;border-radius:1cqw;background:rgba(255,255,255,.12)}
+  .fill{position:absolute;left:0;top:0;bottom:0;border-radius:1cqw;background:linear-gradient(90deg,var(--gold),var(--pink));width:0}
+  .tick{position:absolute;top:50%;width:.7cqw;height:.7cqw;margin:-.35cqw 0 0 -.35cqw;border-radius:50%;background:#2a1430;border:1px solid var(--muted)}
+  .tick span{position:absolute;top:1.1cqw;left:50%;transform:translateX(-50%);font-size:.78cqw;color:var(--muted);white-space:nowrap}
+  .edot{position:absolute;top:50%;width:1.3cqw;height:1.3cqw;margin:-.65cqw 0 0 -.65cqw;border-radius:50%;
+        background:radial-gradient(circle at 35% 30%,#fff,var(--pink) 50%,#8a1c40);box-shadow:0 0 1cqw var(--pink);left:0;transition:opacity .3s}
+  #inset{position:absolute;right:2.6cqw;top:8.6cqw;width:20cqw;z-index:4;transition:opacity .4s,transform .4s}
+  #inset canvas{width:20cqw !important;height:20cqw !important;display:block;border-radius:50%;
+        background:radial-gradient(circle at 50% 40%,#4b1b40,#1a0b20 70%);border:2px solid rgba(255,255,255,.75);
+        box-shadow:0 0 0 .4cqw rgba(255,143,177,.18),0 1.5cqw 3cqw rgba(0,0,0,.5)}
+  #inset.off{opacity:0;transform:scale(.8);pointer-events:none}
+  .icap{margin-top:.8cqw;text-align:center;font-size:.92cqw;color:var(--ink);background:rgba(20,8,24,.78);border:1px solid var(--line);border-radius:2cqw;padding:.4cqw .8cqw}
+  #leader{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:visible}
+  #leader line{stroke:rgba(255,255,255,.75);stroke-width:1.2;stroke-dasharray:4 4}
+  .hint3d{top:auto;bottom:13.2cqw}
+  .nbtn.play{background:rgba(246,200,95,.16);border-color:rgba(246,200,95,.5)}
+  .nbtn.play.on{background:var(--gold);color:#1a0712;font-weight:600}
+  .day{display:inline-block;margin-left:.6cqw;font-size:.82cqw;color:var(--ink);background:rgba(255,143,177,.18);padding:.35cqw .8cqw;border-radius:2cqw}
+  @media (max-aspect-ratio: 1/1){
+    .trip{display:none}
+    #inset{width:30cqw;top:15cqw;right:3cqw}
+    #inset canvas{width:30cqw !important;height:30cqw !important}
+    .icap{font-size:2.4cqw}
+    .tick span{font-size:2cqw}
+    .day{font-size:2.4cqw}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+  <div id="stage"></div>
+  <svg id="leader"><line id="ll" x1="0" y1="0" x2="0" y2="0"/></svg>
+  <div id="labels"></div>
+  <div class="progress" id="progress"></div>
+
+  <header class="top">
+    <a class="brand" href="index.html" title="Voltar aos slides de segmentação"><i></i>← Slides · Trajeto do embrião</a>
+    <div class="trip"><div class="track" id="track"><div class="fill" id="tripFill"></div><div class="edot" id="tripDot"></div></div></div>
+    <div class="tools">
+      <div class="counter" id="counter"><b>1</b> / 10</div>
+      <button class="ibtn on" id="btnFollow" title="Câmera segue o embrião (C)">🎯</button>
+      <button class="ibtn" id="btnWall" title="Mostrar parede frontal (P)">◐</button>
+      <button class="ibtn" id="btnReplay" title="Repetir animação (R)">↺</button>
+      <button class="ibtn" id="btnFull" title="Tela cheia (F)">⛶</button>
+    </div>
+  </header>
+
+  <div id="inset" class="off"><div class="icap" id="icap"></div></div>
+  <div class="hint3d">🖱 Arraste para girar · role para zoom</div>
+  <div id="cap"></div>
+
+  <section class="panel" id="panel"></section>
+
+  <nav class="nav">
+    <button class="nbtn" id="prev" aria-label="Etapa anterior">◀ <span>Anterior</span></button>
+    <button class="nbtn play" id="play" aria-label="Viagem completa">▶ <span>Viagem completa</span></button>
+    <div class="dots" id="dots"></div>
+    <button class="nbtn next" id="next" aria-label="Próxima etapa"><span>Próximo</span> ▶</button>
+  </nav>
+
+  <div id="err">Não foi possível carregar o 3D.<br>Verifique a conexão com a internet (a biblioteca Three.js é carregada online).</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* =====================================================================
+   RENDERIZADORES: cena principal (anatomia) + lupa (embrião ampliado)
+   ===================================================================== */
+const deck = document.getElementById('deck');
+const stageEl = document.getElementById('stage');
+const labelsEl = document.getElementById('labels');
+const capEl = document.getElementById('cap');
+const insetEl = document.getElementById('inset');
+const icapEl = document.getElementById('icap');
+const leaderLine = document.getElementById('ll');
+
+function makeRenderer(){
+  const r = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  return r;
+}
+let renderer, iR;
+try{ renderer = makeRenderer(); iR = makeRenderer(); }
+catch(e){ document.getElementById('err').style.display = 'grid'; throw e; }
+stageEl.appendChild(renderer.domElement);
+insetEl.prepend(iR.domElement);
+
+function addLights(sc){
+  sc.add(new THREE.HemisphereLight(0xffd6e7, 0x1a0820, .75));
+  const k = new THREE.DirectionalLight(0xffffff, 1.7); k.position.set(3, 4, 5); sc.add(k);
+  const r = new THREE.DirectionalLight(0xff6fa0, 2.0); r.position.set(-4, 1.5, -3); sc.add(r);
+  const f = new THREE.PointLight(0x8fd3ff, 5, 14); f.position.set(2, -2.5, 3); sc.add(f);
+}
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x170a1e, 9, 20);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+addLights(scene);
+const iScene = new THREE.Scene();
+iScene.environment = new THREE.PMREMGenerator(iR).fromScene(new RoomEnvironment(), 0.04).texture;
+addLights(iScene);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.03, 100);
+camera.position.set(0.25, 1.0, 7.0);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.minDistance = .5; controls.maxDistance = 14;
+const iCam = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+
+/* =====================================================================
+   UTILITÁRIOS E EMBRIÕES (mesmos modelos dos slides de segmentação)
+   ===================================================================== */
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+const Z = V(0,0,1);
+const clamp = (x,a=0,b=1) => Math.min(b, Math.max(a, x));
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+const smooth = (a,b,x) => { const t = clamp((x-a)/(b-a)); return t*t*(3-2*t); };
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function fib(n){ const pts=[], g=Math.PI*(3-Math.sqrt(5));
+  for(let i=0;i<n;i++){ const y=1-(i/(n-1))*2, r=Math.sqrt(1-y*y), th=g*i; pts.push(V(Math.cos(th)*r, y, Math.sin(th)*r)); }
+  return pts; }
+
+const SG = new THREE.SphereGeometry(1, 48, 32); SG.userData.shared = true;
+const SL = new THREE.SphereGeometry(1, 18, 12); SL.userData.shared = true;
+
+const matCache = {};
+function M(color, o={}){
+  const k = color + JSON.stringify(o);
+  if(!matCache[k]){
+    const m = new THREE.MeshPhysicalMaterial(Object.assign({
+      color, roughness:.42, metalness:0, clearcoat:.7, clearcoatRoughness:.35,
+      sheen:.6, sheenRoughness:.5, sheenColor:0xffe0ea }, o));
+    m.userData.cached = true; matCache[k] = m;
+  }
+  return matCache[k];
+}
+const GLASS = o => M(0xd7ecff, Object.assign({ transparent:true, opacity:.15, depthWrite:false, roughness:.06, clearcoat:1, sheen:0 }, o));
+
+function sphere(r, mat, pos=V(), geo=SG){ const m = new THREE.Mesh(geo, mat); m.scale.setScalar(r); m.position.copy(pos); return m; }
+
+const GLOW = (()=>{ const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(128,128,0,128,128,128);
+  gr.addColorStop(0,'rgba(255,240,225,0.18)'); gr.addColorStop(.72,'rgba(255,225,210,0.5)');
+  gr.addColorStop(.94,'rgba(255,255,255,1)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,256,256); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })();
+function planeDisc(r, opacity=0){
+  return new THREE.Mesh(new THREE.CircleGeometry(r, 64), new THREE.MeshBasicMaterial({ map:GLOW, color:0xffffff, transparent:true,
+    opacity, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
+}
+
+/* ---------- animação / rótulos ---------- */
+const toV = s => typeof s === 'number' ? V(s,s,s) : s.clone();
+function anim(ctx, obj, o){
+  const a = { obj, fp:(o.fp||obj.position).clone(), tp:(o.tp||obj.position).clone(),
+    fs:toV(o.fs ?? obj.scale), ts:toV(o.ts ?? obj.scale), delay:(o.delay||0)+(ctx.off||0), dur:o.dur||1.2 };
+  obj.position.copy(a.fp); obj.scale.copy(a.fs); ctx.anims.push(a);
+}
+function label(ctx, parent, text, pos, side='r'){
+  const o = new THREE.Object3D(); o.position.copy(pos); parent.add(o); ctx.labels.push({ o, text, side });
+}
+function addZona(root, r=1.3){
+  const g = new THREE.Group();
+  g.add(sphere(r, GLASS({ side:THREE.BackSide, opacity:.10 })));
+  g.add(sphere(r, GLASS({ opacity:.16 })));
+  g.add(sphere(r*.94, GLASS({ side:THREE.BackSide, opacity:.06, color:0xffffff })));
+  root.add(g); return g;
+}
+const sub = (root, x=0, y=0, z=0, s=1) => { const g = new THREE.Group(); g.position.set(x,y,z); g.scale.setScalar(s); root.add(g); return g; };
+
+
+const PINK = 0xf3a6bd, PINK2 = 0xe891ab, YOLK = 0xf5c04f, NUC = 0x8a1c40;
+
+function bZygote(ctx, root, o={}){
+  if(o.zona !== false) addZona(root);
+  const tilt = new THREE.Group(); tilt.rotation.z = o.furrow ? -.5 : 0; root.add(tilt);
+  const cyto = sphere(1, M(0xf7c3d3, { transparent:true, opacity:.6, depthWrite:false, roughness:.3, clearcoat:.9 }));
+  root.add(cyto);
+  const n1 = sphere(.2, M(NUC, { roughness:.6, clearcoat:.2 }), V(-.04,.27,.04));
+  const n2 = sphere(.19, M(NUC, { roughness:.6, clearcoat:.2 }), V(.05,-.25,-.02));
+  tilt.add(n1, n2);
+  anim(ctx, cyto, { fs:.7, ts:1, dur:1 });
+  if(o.furrow){
+    const d1 = planeDisc(1.02, .7); d1.rotation.x = Math.PI/2; tilt.add(d1);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.0, .012, 8, 96), new THREE.MeshBasicMaterial({ color:0xfff3e8, transparent:true, opacity:.8, blending:THREE.AdditiveBlending, depthWrite:false }));
+    ring.rotation.x = Math.PI/2; tilt.add(ring);
+    ctx.updaters.push(t => { d1.material.opacity = .55 + .25*Math.sin(t*1.8); ring.material.opacity = .5 + .3*Math.sin(t*1.8); root.position.y = Math.sin(t*.8)*.05; });
+  }
+  if(o.labels !== false){
+    label(ctx, root, 'Zona pelúcida', V(.9,-.9,.2).normalize().multiplyScalar(1.3), 'r');
+    label(ctx, tilt, 'Pronúcleos', V(-.1,.27,.1), 'l');
+    label(ctx, root, 'Citoplasma', V(.45,.6,.45), 'r');
+  }
+}
+
+const P2 = [V(-.48,0,0), V(.48,0,0)];
+const P4 = [V(-.43,0,-.43), V(-.43,0,.43), V(.43,0,-.43), V(.43,0,.43)];
+const P8 = []; for(const p of P4) for(const sy of [-1,1]) P8.push(V(p.x*.93, sy*.38, p.z*.93));
+
+function bCleave(ctx, root, n, o={}){
+  if(o.zona !== false) addZona(root);
+  let parents, kids, rP, rK;
+  if(n===2){ parents=[V()]; kids=P2; rP=.95; rK=.6; }
+  if(n===4){ parents=P2; kids=P4; rP=.6; rK=.5; }
+  if(n===8){ parents=P4; kids=P8; rP=.5; rK=.42; }
+  kids.forEach((k,i) => {
+    const par = parents.reduce((a,b) => a.distanceTo(k) < b.distanceTo(k) ? a : b);
+    const m = sphere(rK, M(i%2 ? PINK : PINK2)); root.add(m);
+    anim(ctx, m, { fp:par, tp:k, fs:rP*.98, ts:rK, delay:.3, dur:1.4 });
+  });
+  if(o.plane !== false){
+    const d = planeDisc(1.18);
+    if(n===2) d.rotation.y = Math.PI/2;
+    if(n===8) d.rotation.x = Math.PI/2;
+    root.add(d);
+    ctx.updaters.push(t => { const p = clamp((t-.05)/2.0); d.material.opacity = Math.sin(p*Math.PI)*.85; });
+  }
+  if(o.labels !== false){
+    label(ctx, root, 'Blastômero', kids[kids.length-1].clone().multiplyScalar(1.25), 'r');
+    if(n===8){ label(ctx, root, 'Polo animal', V(0,1.3,0), 'r'); label(ctx, root, 'Polo vegetativo', V(0,-1.3,0), 'l'); }
+    else label(ctx, root, 'Zona pelúcida', V(-.8,-.95,.3).normalize().multiplyScalar(1.3), 'l');
+  }
+}
+
+function bMorula(ctx, root, o={}){
+  if(o.zona !== false) addZona(root);
+  const rnd = rng(7);
+  const pts = fib(24).map(p => p.multiplyScalar(.7)).concat(fib(6).map(p => p.multiplyScalar(.24)));
+  pts.forEach((p,i) => {
+    p.add(V((rnd()-.5)*.06, (rnd()-.5)*.06, (rnd()-.5)*.06));
+    const r = i<24 ? .36 : .3;
+    const m = sphere(r, M(i%3 ? PINK : PINK2)); root.add(m);
+    anim(ctx, m, { fp:V(), tp:p, fs:.05, ts:r, delay:.1 + i*.03, dur:1.1 });
+  });
+  if(o.labels !== false){
+    label(ctx, root, 'Blastômeros', pts[5].clone().multiplyScalar(1.45), 'r');
+    label(ctx, root, 'Zona pelúcida', V(-.9,-.8,.3).normalize().multiplyScalar(1.3), 'l');
+  }
+}
+
+function flatCell(r, mat, d, pos, flat=.5){
+  const m = sphere(r, mat, pos, SL); m.quaternion.setFromUnitVectors(Z, d); m.userData.ts = V(r, r, r*flat); return m;
+}
+
+
+function bBlastocyst(ctx, root, o={}){
+  if(o.zona !== false) addZona(root, 1.32);
+  const R = 1.1, rnd = rng(11);
+  fib(150).forEach(d => {
+    if(d.z > .08) return;
+    const p = d.clone().multiplyScalar(R);
+    const m = flatCell(.16, M(0xeea3b8), d, p, .42); root.add(m);
+    anim(ctx, m, { fp:p.clone().multiplyScalar(.4), tp:p, fs:.01, ts:m.userData.ts, delay:.15 + rnd()*.4, dur:1 });
+  });
+  for(let i=0;i<22;i++){
+    const p = V(0,.7,0).add(V((rnd()-.5)*.62, (rnd()-.5)*.32, (rnd()-.5)*.62));
+    if(p.length() > .92) p.setLength(.92);
+    const m = sphere(.16, M(0xc2577c)); root.add(m);
+    anim(ctx, m, { fp:V(0,.3,0), tp:p, fs:.01, ts:.16, delay:.6 + i*.03, dur:1 });
+  }
+  const cav = sphere(.98, M(0x9fd8ff, { transparent:true, opacity:.12, depthWrite:false, roughness:.1, sheen:0 }));
+  root.add(cav); anim(ctx, cav, { fs:.2, ts:.98, delay:.3, dur:1.3 });
+  if(o.labels !== false){
+    label(ctx, root, 'Zona pelúcida', V(1,-1,.25).normalize().multiplyScalar(1.32), 'r');
+    label(ctx, root, 'Trofoblasto', V(-1,-.35,-.1).normalize().multiplyScalar(1.1), 'l');
+    label(ctx, root, 'Embrioblasto', V(.2,.75,.1), 'r');
+    label(ctx, root, 'Blastocele', V(-.1,-.25,.2), 'l');
+  }
+}
+
+
+const DOT = (()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,'rgba(255,255,255,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })();
+const glowSprite = (color, s=.2) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:DOT, color, transparent:true,
+  blending:THREE.AdditiveBlending, depthWrite:false, depthTest:false })); sp.scale.set(s,s,1); sp.renderOrder = 10; return sp; };
+
+function disposeTree(r){
+  r.traverse(o => {
+    if(o.isSprite) { o.material.dispose(); return; }
+    if(o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if(!m.userData.cached) m.dispose(); }); }
+  });
+  r.parent?.remove(r);
+}
+
+/* ---------- modelos novos para a lupa ---------- */
+function bOocyte(ctx, root, o={}){
+  addZona(root, 1.3);
+  root.add(sphere(1, M(0xf6dfa8, { transparent:true, opacity:.72, depthWrite:false, roughness:.35, clearcoat:.8 })));
+  const cg = new THREE.CapsuleGeometry(.03, .12, 4, 8);
+  for(let k=0;k<5;k++){ const c = new THREE.Mesh(cg, M(NUC, { roughness:.6 })); c.position.set(-.16 + k*.08, .7, 0); root.add(c); }
+  root.add(sphere(.17, M(0xf2cf86), V(.3,1.06,0)));            // 1º glóbulo polar
+  const rnd = rng(17);
+  fib(95).forEach((d,i) => {
+    if(o.sparse && rnd() > .4) return;
+    const p = d.clone().multiplyScalar(1.52 + rnd()*.25), r = .15 + rnd()*.06;
+    const m = sphere(r, M(0xf0c27e, { roughness:.7 }), p, SL); root.add(m);
+    anim(ctx, m, { fs:.001, ts:r, delay:.1 + i*.008, dur:.8 });
+  });
+}
+
+function bFert(ctx, root){
+  bOocyte(ctx, root, { sparse:true });
+  [V(-.22,.05,0), V(.22,-.05,0)].forEach(p => { const m = sphere(.17, M(NUC), p); root.add(m); anim(ctx, m, { fs:.001, ts:.17, delay:4.8, dur:1 }); });
+  const flash = sphere(1.34, new THREE.MeshBasicMaterial({ color:0xfff2c8, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false }));
+  root.add(flash);
+  const rnd = rng(23), sp = [], UP = V(0,1,0), X = V(1,0,0), side = V(), tmpP = V(), nd = V();
+  const tailMat = new THREE.LineBasicMaterial({ color:0xeaf4ff, transparent:true, opacity:.9 });
+  for(let k=0;k<9;k++){
+    const dir = k===0 ? V(.75,.4,.55).normalize() : V(rnd()-.5, (rnd()-.5)*.8, rnd()*.6 + .2).normalize();
+    const head = sphere(1, M(0xf4f8ff, { roughness:.3 }), V(), SL); head.scale.set(.15,.09,.09); root.add(head);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(14*3), 3));
+    const tail = new THREE.Line(g, tailMat); tail.frustumCulled = false; root.add(tail);
+    sp.push({ dir, start:dir.clone().multiplyScalar(3.4), end:dir.clone().multiplyScalar(k===0 ? 1.38 : 1.62 + rnd()*.2), head, tail, g, ph:rnd()*6, delay:rnd()*.8 });
+  }
+  ctx.updaters.push(t => {
+    sp.forEach((s,k) => {
+      const p = ease(clamp((t - s.delay)/3.2));
+      const pos = tmpP.lerpVectors(s.start, s.end, p);
+      if(k===0 && t > 3.6){ pos.copy(s.end).multiplyScalar(1 - .35*ease(clamp((t-3.6)/1))); }
+      const vis = !(k===0 && t > 4.6); s.head.visible = s.tail.visible = vis;
+      side.crossVectors(s.dir, UP).normalize();
+      s.head.position.copy(pos).addScaledVector(side, Math.sin(t*10 + s.ph)*.015);
+      s.head.quaternion.setFromUnitVectors(X, nd.copy(s.dir).negate());
+      const a = s.g.attributes.position.array;
+      for(let i=0;i<14;i++){
+        const d = .1 + i*.07, w = Math.sin(t*12 + s.ph - i*.7)*.025*i/4;
+        a[i*3] = pos.x + s.dir.x*d + side.x*w; a[i*3+1] = pos.y + s.dir.y*d + side.y*w; a[i*3+2] = pos.z + s.dir.z*d + side.z*w;
+      }
+      s.g.attributes.position.needsUpdate = true;
+    });
+    flash.material.opacity = t > 4.3 && t < 5.5 ? Math.sin((t-4.3)/1.2*Math.PI)*.35 : 0;
+  });
+}
+
+function bSeq48(ctx, root){
+  const a = sub(root), b = sub(root);
+  bCleave(ctx, a, 4, { labels:false });
+  ctx.off = 3.2; bCleave(ctx, b, 8, { labels:false, plane:false }); ctx.off = 0;
+  ctx.updaters.push(t => { a.visible = t < 3.2; b.visible = t >= 3.2; });
+}
+
+function bHatch(ctx, root){
+  const z = new THREE.Mesh(new THREE.SphereGeometry(1.32, 48, 32, 0, Math.PI*2, .62, Math.PI - .62), GLASS({ opacity:.3, side:THREE.DoubleSide }));
+  z.rotation.z = -Math.PI/2; root.add(z);
+  const b = sub(root); bBlastocyst(ctx, b, { zona:false, labels:false }); b.rotation.z = Math.PI/2;
+  anim(ctx, b, { fp:V(), tp:V(1.3,0,0), fs:1, ts:1.06, delay:1.4, dur:5 });
+}
+
+function bImplant(ctx, root){
+  const slab = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 1.4, 64), M(0xc4475f, { transparent:true, opacity:.55, depthWrite:false, roughness:.6 }));
+  slab.position.y = -1.75; root.add(slab);
+  const top = new THREE.Mesh(new THREE.CircleGeometry(3.2, 64), M(0xe27b93, { transparent:true, opacity:.4, depthWrite:false, side:THREE.DoubleSide }));
+  top.rotation.x = -Math.PI/2; top.position.y = -1.05; root.add(top);
+  const rnd = rng(31), glg = new THREE.CylinderGeometry(.06, .09, 1.1, 10);
+  for(let k=0;k<12;k++){ const gl = new THREE.Mesh(glg, M(0x8e2440, { roughness:.6 })); const a = rnd()*Math.PI*2, r = 1.4 + rnd()*1.5; gl.position.set(Math.cos(a)*r, -1.62, Math.sin(a)*r); root.add(gl); }
+  const b = sub(root); bBlastocyst(ctx, b, { zona:false, labels:false }); b.rotation.z = Math.PI;
+  anim(ctx, b, { fp:V(0,.9,0), tp:V(0,-.45,0), delay:.6, dur:5 });
+  const syn = sub(root);
+  fib(46).forEach((d,i) => {
+    if(d.y > -.15 || d.z > .35) return;
+    const p = d.clone().multiplyScalar(1.15), r = .2 + rnd()*.14;
+    const m = sphere(r, M(0x9c2f63, { roughness:.45 }), p, SL); syn.add(m);
+    anim(ctx, m, { fs:.001, ts:r, delay:3.4 + i*.03, dur:1.5 });
+  });
+  for(let k=0;k<10;k++){
+    const p = V(rnd()-.5, -rnd()*.9 - .25, rnd() - .7).normalize().multiplyScalar(1.38);
+    const m = sphere(.1, M(0xd8202e, { roughness:.3 }), p, SL); syn.add(m);
+    anim(ctx, m, { fs:.001, ts:.1, delay:5.8 + k*.12, dur:.8 });
+  }
+  ctx.updaters.push(() => syn.position.copy(b.position));
+}
+
+function bEcto(ctx, root){
+  const tm = M(0xe58a9c, { transparent:true, opacity:.26, depthWrite:false, side:THREE.DoubleSide });
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 6, 48, 1, true), tm); tube.rotation.z = Math.PI/2; root.add(tube);
+  root.add(sphere(1.45, tm, V(0,.25,0)));
+  const b = sub(root, 0, .55, 0, .7); bBlastocyst(ctx, b, { zona:false, labels:false });
+  const blood = glowSprite(0xff2238, 2.6); blood.material.depthTest = true; blood.position.set(0,.6,0); root.add(blood);
+  ctx.updaters.push(t => { const s = 2.6 + Math.sin(t*3)*.4; blood.scale.set(s,s,1); blood.material.opacity = .45 + .2*Math.sin(t*3); });
+}
+
+const INSETS = {
+  oocyte:{ cap:'Ovócito secundário · zona pelúcida · corona radiata', cam:[0,.9,6.4], build:(c,r)=>bOocyte(c,r) },
+  fert:  { cap:'Espermatozoides chegando ao ovócito', cam:[0,.7,7.8], sway:true, build:bFert },
+  c2:    { cap:'Zigoto → 2 blastômeros', build:(c,r)=>bCleave(c,r,2,{ labels:false }) },
+  c48:   { cap:'4 → 8 blastômeros', build:bSeq48 },
+  morula:{ cap:'Mórula (16 a 32 células)', build:(c,r)=>bMorula(c,r,{ labels:false }) },
+  blasto:{ cap:'Blastocisto (em corte)', sway:true, build:(c,r)=>bBlastocyst(c,r,{ labels:false }) },
+  hatch: { cap:'Eclosão da zona pelúcida', sway:true, build:bHatch },
+  implant:{ cap:'Sinciciotrofoblasto invadindo o endométrio', cam:[0,.7,6.8], look:[0,-.45,0], sway:true, build:bImplant },
+  ecto:  { cap:'Blastocisto preso na parede da tuba', cam:[0,.5,6.8], sway:true, build:bEcto },
+};
+
+/* =====================================================================
+   ANATOMIA (corte frontal, como nos livros)
+   ===================================================================== */
+const OUT = [[0,1.32],[.28,1.31],[.48,1.24],[.6,1.08],[.62,.85],[.55,.5],[.42,.15],[.27,-.15],[.22,-.45],[.2,-.75],[.3,-.95],[.32,-1.55]];
+const INN = [[0,1.1],[.22,1.09],[.4,1.02],[.38,.82],[.29,.52],[.16,.2],[.07,-.1],[.05,-.45],[.05,-.75],[.2,-.95],[.22,-1.55]];
+const INB = INN.slice(0,7);
+const ENB = [[0,1.19],[.25,1.18],[.48,1.09],[.47,.84],[.37,.52],[.22,.2],[.1,-.1]];
+const toV2 = a => a.map(([r,y]) => new THREE.Vector2(Math.max(r,.001), y));
+function lathe(pts, start, len, mat, zs){ const m = new THREE.Mesh(new THREE.LatheGeometry(toV2(pts), 64, start, len), mat); m.scale.z = zs; return m; }
+function uShape(outer, inner){
+  const pts = [...outer, ...inner.slice().reverse(), ...inner.slice(1).map(([r,y]) => [-r,y]), ...outer.slice(0,-1).reverse().map(([r,y]) => [-r,y])];
+  const s = new THREE.Shape(); s.moveTo(pts[0][0], pts[0][1]); pts.slice(1).forEach(p => s.lineTo(p[0], p[1]));
+  return new THREE.ShapeGeometry(s, 4);
+}
+function varTube(curve, rFn, seg=160, rad=24){
+  const fr = curve.computeFrenetFrames(seg, false), pos = [], idx = [];
+  for(let i=0;i<=seg;i++){
+    const s = i/seg, P = curve.getPointAt(s), N = fr.normals[i], B = fr.binormals[i], r = rFn(s);
+    for(let j=0;j<=rad;j++){ const a = j/rad*Math.PI*2, c = Math.cos(a), sn = Math.sin(a);
+      pos.push(P.x + r*(c*N.x + sn*B.x), P.y + r*(c*N.y + sn*B.y), P.z + r*(c*N.z + sn*B.z)); }
+  }
+  for(let i=0;i<seg;i++) for(let j=0;j<rad;j++){ const a = i*(rad+1) + j, b = a + rad + 1; idx.push(a,b,a+1, b,b+1,a+1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
+const anat = new THREE.Group(); scene.add(anat);
+const DS = THREE.DoubleSide;
+// útero e vagina
+anat.add(lathe(OUT, Math.PI/2, Math.PI, M(0xd8707f, { side:DS, roughness:.55, sheen:.3 }), .62));
+anat.add(lathe(INN, Math.PI/2, Math.PI, M(0xb3304e, { side:DS, roughness:.5, sheen:.4 }), .35));
+const cutMyo = new THREE.Mesh(uShape(OUT, INN), M(0xc95666, { side:DS, roughness:.6, clearcoat:.2 })); anat.add(cutMyo);
+const cutEnd = new THREE.Mesh(uShape(ENB, INB), M(0x9e1f3f, { side:DS, roughness:.5 })); cutEnd.position.z = .003; anat.add(cutEnd);
+const frontWall = lathe(OUT, -Math.PI/2, Math.PI, M(0xe58a9c, { transparent:true, opacity:.13, depthWrite:false, side:DS }), .62);
+frontWall.visible = false; anat.add(frontWall);
+
+// tuba uterina (do corno uterino até as fímbrias)
+const TC = new THREE.CatmullRomCurve3([V(.45,1.05,0), V(.7,1.14,0), V(1.0,1.2,0), V(1.35,1.27,.03), V(1.7,1.3,.06), V(2.0,1.22,.09), V(2.22,1.0,.12), V(2.3,.78,.14)]);
+const tubeR = s => s < .3 ? .05 : s < .82 ? .05 + .045*smooth(.3,.62,s) : .095 + .085*Math.pow((s-.82)/.18, 2);
+const TCp = s => TC.getPointAt(s);
+const tubeGeo = varTube(TC, tubeR), lumenGeo = varTube(TC, s => tubeR(s)*.55);
+const tubeMat = M(0xe9909f, { transparent:true, opacity:.38, depthWrite:false, side:DS, roughness:.4 });
+const lumenMat = M(0xc0405c, { transparent:true, opacity:.22, depthWrite:false, side:DS });
+
+const O = V(1.85,.42,.2), OR = V(.36,.22,.22);
+const E = TCp(1), dOE = E.clone().sub(O).normalize();
+const tEl = 1/Math.sqrt((dOE.x/OR.x)**2 + (dOE.y/OR.y)**2 + (dOE.z/OR.z)**2);
+const F = O.clone().addScaledVector(dOE, tEl);
+const fimbriae = [];
+
+function buildSide(sign){
+  const g = new THREE.Group(); g.scale.x = sign; anat.add(g);
+  g.add(new THREE.Mesh(tubeGeo, tubeMat), new THREE.Mesh(lumenGeo, lumenMat));
+  // fímbrias
+  const fr = TC.computeFrenetFrames(160, false), T = TC.getTangentAt(1), N = fr.normals[160], B = fr.binormals[160], rr = tubeR(1);
+  const rnd = rng(sign > 0 ? 3 : 4), capG = new THREE.CapsuleGeometry(.018, .16, 4, 8);
+  for(let k=0;k<16;k++){
+    const a = k/16*Math.PI*2, rad = N.clone().multiplyScalar(Math.cos(a)).addScaledVector(B, Math.sin(a));
+    const dir = T.clone().addScaledVector(rad, .9).normalize();
+    const piv = new THREE.Group(); piv.position.copy(E).addScaledVector(rad, rr*.95);
+    piv.quaternion.setFromUnitVectors(V(0,1,0), dir); piv.userData.q0 = piv.quaternion.clone(); piv.userData.ph = rnd()*6;
+    const len = .7 + rnd()*.6, c = new THREE.Mesh(capG, M(0xe07a90, { roughness:.5 })); c.scale.set(1, len, 1); c.position.y = .1*len; piv.add(c);
+    g.add(piv); fimbriae.push(piv);
+  }
+  // ovário com folículos
+  const ov = sphere(1, M(0xf3cfd2, { roughness:.6, sheen:.5 }), O); ov.scale.copy(OR); g.add(ov);
+  fib(14).forEach((d,i) => { if(d.dot(dOE) > .8) return; const p = O.clone().add(V(d.x*OR.x, d.y*OR.y, d.z*OR.z)); g.add(sphere(.03 + (i%3)*.012, M(0xfbe6ea, { transparent:true, opacity:.85 }), p, SL)); });
+  // ligamento útero-ovárico
+  const lig = new THREE.CatmullRomCurve3([O.clone().add(V(-.3,0,-.05)), V(1.2,.62,.0), V(.58,.78,-.05)]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(lig, 20, .022, 8), M(0xd98a96, { roughness:.6 })));
+  return g;
+}
+buildSide(1); buildSide(-1);
+
+// folículo maduro e corpo lúteo (lado direito, onde a viagem acontece)
+const graaf = sphere(.1, M(0xfff0f3, { transparent:true, opacity:.8, roughness:.2, clearcoat:1 }), F.clone().addScaledVector(dOE, .03)); anat.add(graaf);
+const luteo = sphere(.09, M(0xf2c14e, { roughness:.55 }), F.clone().addScaledVector(dOE, .02)); luteo.visible = false; anat.add(luteo);
+const burst = [];
+for(let k=0;k<18;k++){ const m = sphere(.014, M(0xfff6e8), F.clone(), SL); m.visible = false; m.userData.v = dOE.clone().add(V(Math.random()-.5, Math.random()-.5, Math.random()-.5).multiplyScalar(1.4)).normalize(); anat.add(m); burst.push(m); }
+
+/* ---------- caminho do embrião ---------- */
+const C1 = V(.3,1.0,0), C2 = V(.15,.88,-.03), C3 = V(.08,.83,-.07), IMP = V(.04,.8,-.1), IMP2 = V(.04,.8,-.17);
+const J = new THREE.CatmullRomCurve3([F.clone().addScaledVector(dOE,.12), TCp(.99), TCp(.95), TCp(.88), TCp(.8), TCp(.72), TCp(.62), TCp(.52), TCp(.4), TCp(.3), TCp(.22), TCp(.12), TCp(.03), C1, C2, C3, IMP], false, 'centripetal');
+const JS = J.getSpacedPoints(1000);
+const uOf = p => { let b = 0, bd = 1e9; JS.forEach((q,i) => { const d = q.distanceToSquared(p); if(d < bd){ bd = d; b = i; } }); return b/1000; };
+const uIn = uOf(TCp(.95)), uAmp = uOf(TCp(.72)), u2 = uOf(TCp(.52)), u4 = uOf(TCp(.22)), uC1 = uOf(C1), uC2 = uOf(C2), uC3 = uOf(C3), uEc = uOf(TCp(.66));
+
+// marcador do embrião
+const marker = new THREE.Group(); scene.add(marker);
+const core = sphere(.032, M(0xffc2d4, { roughness:.3, clearcoat:1 }), V(), SL); marker.add(core);
+const halo = glowSprite(0xff9fc0, .22); marker.add(halo);
+
+// espermatozoides
+const SP = new THREE.CatmullRomCurve3([V(0,-1.45,0), V(0,-.9,0), V(0,-.45,0), V(.02,.1,0), V(.12,.6,0), V(.3,.97,0), TCp(0), TCp(.12), TCp(.3), TCp(.52), TCp(.7)]);
+const spermG = new THREE.Group(); scene.add(spermG);
+const spTail = new THREE.LineBasicMaterial({ color:0xeef6ff, transparent:true, opacity:.85 });
+const sperm = []; { const r = rng(41);
+  for(let k=0;k<32;k++){
+    const head = sphere(1, M(0xf4f8ff, { roughness:.3 }), V(), SL); head.scale.set(.022,.012,.012);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(8*3), 3));
+    const tail = new THREE.Line(g, spTail); tail.frustumCulled = false; spermG.add(head, tail);
+    sperm.push({ head, tail, g, d:r()*1.6, v:.17 + r()*.07, drop:r() < .6 ? .25 + r()*.35 : 2, lat:(r()-.5)*2, ph:r()*6 });
+  } }
+
+// fluxo de líquido gerado pelos cílios (em direção ao útero)
+const FN = 70, flowPos = new Float32Array(FN*3), flowS = [], flowJ = [];
+for(let i=0;i<FN;i++){ flowS.push(Math.random()); flowJ.push(V(Math.random()-.5, Math.random()-.5, Math.random()-.5).multiplyScalar(1.3)); }
+const flowGeo = new THREE.BufferGeometry(); flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3));
+const flow = new THREE.Points(flowGeo, new THREE.PointsMaterial({ color:0xbfe8ff, size:.022, transparent:true, opacity:.75, depthWrite:false }));
+flow.frustumCulled = false; scene.add(flow);
+
+// implantação e gravidez ectópica
+const decid = glowSprite(0xff3050, .01); decid.position.copy(IMP); scene.add(decid);
+const ectoBulge = sphere(1, M(0xff4d63, { transparent:true, opacity:.3, depthWrite:false }), TCp(.66)); ectoBulge.visible = false; scene.add(ectoBulge);
+const ectoGlow = glowSprite(0xff2238, .4); ectoGlow.position.copy(TCp(.66)); ectoGlow.visible = false; scene.add(ectoGlow);
+
+// poeira de fundo
+{ const n = 500, pos = new Float32Array(n*3), r = rng(3);
+  for(let i=0;i<n;i++){ const d = V(r()-.5, r()-.5, r()-.5).normalize().multiplyScalar(6 + r()*8); pos.set([d.x,d.y,d.z], i*3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var dust = new THREE.Points(g, new THREE.PointsMaterial({ color:0xff9fc0, size:.035, transparent:true, opacity:.5, depthWrite:false })); scene.add(dust); }
+
+/* ---------- rótulos anatômicos ---------- */
+const AL = [];
+function alabel(key, text, pos, side='r'){ const o = new THREE.Object3D(); o.position.copy(pos); scene.add(o);
+  const el = document.createElement('div'); el.className = 'label ' + side;
+  el.innerHTML = `<span class="dot"></span><span class="ln"></span><span class="tx">${text}</span>`; el.style.opacity = 0; labelsEl.appendChild(el);
+  AL.push({ key, o, side, el }); }
+alabel('ovario', 'Ovário', O.clone().add(V(.05,-.2,.1)), 'r');
+alabel('foliculo', 'Folículo maduro', F, 'r');
+alabel('luteo', 'Corpo lúteo', F, 'r');
+alabel('fimbrias', 'Fímbrias', E.clone().add(V(.1,-.08,.05)), 'r');
+alabel('infundibulo', 'Infundíbulo', TCp(.92).add(V(-.08,.1,0)), 'l');
+alabel('ampola', 'Ampola (local da fecundação)', TCp(.72).add(V(0,.08,0)), 'l');
+alabel('istmo', 'Istmo', TCp(.32).add(V(0,.06,0)), 'r');
+alabel('intramural', 'Porção intramural', TCp(.04).add(V(0,.06,0)), 'r');
+alabel('tuba', 'Tuba uterina', TCp(.5).add(V(0,.07,0)).multiply(V(-1,1,1)), 'l');
+alabel('utero', 'Útero (fundo)', V(0,1.36,0), 'c');
+alabel('endometrio', 'Endométrio', V(-.36,.72,0), 'l');
+alabel('miometrio', 'Miométrio', V(-.56,.45,0), 'l');
+alabel('cavidade', 'Cavidade uterina', V(0,.45,0), 'c');
+alabel('colo', 'Colo do útero', V(-.24,-.45,0), 'l');
+alabel('vagina', 'Vagina', V(-.32,-1.3,0), 'l');
+alabel('nidacao', 'Local da nidação', IMP, 'l');
+alabel('ecto', 'Implantação na tuba', TCp(.66).add(V(0,-.1,0)), 'l');
+
+/* =====================================================================
+   ETAPAS DA VIAGEM  (edite os textos aqui)
+   ===================================================================== */
+const CREAM = 0xfff0c8, ROSE = 0xffc2d4;
+const STAGES = [
+  { nav:'Anatomia', day:'Visão geral', target:V(.25,-.05,0), off:[0,.6,6.6], dur:4, foll:'graaf',
+    labels:['ovario','foliculo','fimbrias','infundibulo','ampola','istmo','tuba','utero','endometrio','miometrio','cavidade','colo','vagina'],
+    html:`<div class="tag">Visão geral</div>
+      <h1>O caminho até o <em>útero</em></h1>
+      <p class="lead">Entre a ovulação e a nidação passam cerca de <b>6 a 7 dias</b>. Nesse tempo, o embrião percorre a tuba uterina enquanto faz a <b>segmentação</b>.</p>
+      <ul>
+        <li><b>Ovário:</b> produz os ovócitos e os hormônios estrogênio e progesterona.</li>
+        <li><b>Tuba uterina</b> (trompa de Falópio, ~10 cm): fímbrias e infundíbulo, ampola, istmo e porção intramural.</li>
+        <li><b>Útero:</b> endométrio (mucosa onde o embrião se implanta), miométrio (músculo) e perimétrio.</li>
+        <li><b>Colo do útero</b> e <b>vagina</b>.</li>
+      </ul>
+      <div class="box"><b>Dica:</b> o modelo está em corte frontal, como nos livros. Aperte <b>▶ Viagem completa</b> para assistir tudo em sequência.</div>` },
+
+  { nav:'Ovulação', day:'Dia 0', u:[0,uIn], move:[1.7,6.6], off:[.35,.3,1.9], dur:8, foll:'anim', flow:true, mc:CREAM, inset:'oocyte',
+    labels:['ovario','foliculo','fimbrias','infundibulo'], cap:'O folículo se rompe e as fímbrias captam o ovócito',
+    html:`<div class="tag">Dia 0 · Ovário</div>
+      <h1>Ovulação</h1>
+      <p class="lead">Por volta do <b>14º dia</b> do ciclo menstrual, o folículo maduro (de De Graaf) se rompe e libera o <b>ovócito secundário</b>.</p>
+      <ul>
+        <li>O rompimento é desencadeado pelo pico do hormônio <b>LH</b>.</li>
+        <li>O ovócito sai envolvido pela <b>zona pelúcida</b> e pela <b>corona radiata</b> (células foliculares).</li>
+        <li>As <b>fímbrias</b> “varrem” a superfície do ovário e puxam o ovócito para dentro da tuba.</li>
+        <li>O folículo vazio vira o <b>corpo lúteo</b>, que produz progesterona.</li>
+      </ul>
+      <div class="box"><b>Você sabia?</b> O ovócito fica parado na metáfase II e só completa a meiose se for fecundado. Ele sobrevive cerca de 12 a 24 horas.</div>` },
+
+  { nav:'Fecundação', day:'Dia 0–1', u:[uIn,uAmp], move:[0,2.8], off:[-.6,.5,3.0], dur:9, foll:'luteo', flow:true, sperm:true, mc:CREAM, mc2:ROSE, inset:'fert',
+    labels:['ampola','colo','cavidade'], cap:'Os espermatozoides sobem até a ampola',
+    html:`<div class="tag">Dia 0–1 · Ampola</div>
+      <h1>Fecundação</h1>
+      <p class="lead">Os espermatozoides sobem pelo colo, pelo útero e pela tuba até a <b>ampola</b>, a parte mais larga da tuba.</p>
+      <ul>
+        <li>De milhões de espermatozoides, só <b>algumas centenas</b> chegam à ampola.</li>
+        <li><b>Reação acrossômica:</b> enzimas da cabeça do espermatozoide abrem caminho pela corona radiata e pela zona pelúcida.</li>
+        <li>Quando um entra, a <b>reação cortical</b> altera a zona pelúcida e impede a entrada de outros (evita a polispermia).</li>
+        <li>O ovócito termina a meiose II; os <b>pronúcleos</b> se unem e forma-se o <b>zigoto (2n)</b>.</li>
+      </ul>
+      <div class="box"><b>Sexo genético:</b> é definido nesse momento, pelo cromossomo X ou Y do espermatozoide.</div>` },
+
+  { nav:'2 células', day:'Dia 1–2', u:[uAmp,u2], foll:'luteo', flow:true, mc:ROSE, inset:'c2',
+    labels:['ampola','istmo'], cap:'Cílios e contrações levam o embrião para o útero',
+    html:`<div class="tag">Dia 1–2 · Ampola → istmo</div>
+      <h1>1ª clivagem</h1>
+      <p class="lead">Cerca de <b>30 horas</b> após a fecundação acontece a primeira divisão mitótica, ainda dentro da tuba.</p>
+      <ul>
+        <li>Os <b>cílios</b> do epitélio da tuba batem sempre na direção do útero e empurram o embrião.</li>
+        <li><b>Contrações peristálticas</b> da musculatura da tuba ajudam no transporte.</li>
+        <li>A <b>zona pelúcida</b> impede que o embrião grude na parede da tuba.</li>
+      </ul>
+      <div class="box"><b>No modelo:</b> os pontinhos azuis mostram o fluxo de líquido gerado pelos cílios.</div>` },
+
+  { nav:'4–8 células', day:'Dia 2–3', u:[u2,u4], foll:'luteo', flow:true, mc:ROSE, inset:'c48',
+    labels:['istmo'], cap:'Atravessando o istmo, a parte mais estreita da tuba',
+    html:`<div class="tag">Dia 2–3 · Istmo</div>
+      <h1>4 e 8 blastômeros</h1>
+      <p class="lead">O embrião atravessa o <b>istmo</b>, a parte mais estreita da tuba, enquanto continua se dividindo.</p>
+      <ul>
+        <li><b>Dia 2:</b> cerca de 4 células.</li>
+        <li><b>Dia 3:</b> cerca de 8 células e início da <b>compactação</b>.</li>
+        <li>Entre 4 e 8 células, o <b>genoma do próprio embrião</b> começa a funcionar.</li>
+      </ul>
+      <div class="box"><b>Antes disso</b>, o embrião usa RNAs e proteínas herdados do ovócito.</div>` },
+
+  { nav:'Mórula', day:'Dia 3–4', u:[u4,uC1], foll:'luteo', flow:true, mc:ROSE, inset:'morula',
+    labels:['intramural','cavidade'], cap:'A mórula entra na cavidade uterina',
+    html:`<div class="tag">Dia 3–4 · Junção útero-tubária</div>
+      <h1>A mórula chega ao útero</h1>
+      <p class="lead">Com <b>16 a 32 células</b>, a mórula atravessa a porção intramural da tuba e entra na <b>cavidade uterina</b>.</p>
+      <ul>
+        <li>A passagem acontece por volta do <b>4º dia</b>.</li>
+        <li>A <b>progesterona</b> do corpo lúteo relaxa a junção entre a tuba e o útero.</li>
+        <li>O endométrio está na <b>fase secretora</b>, preparado para receber o embrião.</li>
+      </ul>
+      <div class="box"><b>Sincronia:</b> se o embrião chegasse cedo demais, o endométrio ainda não estaria pronto.</div>` },
+
+  { nav:'Blastocisto', day:'Dia 4–5', u:[uC1,uC2], foll:'luteo', mc:ROSE, mr:1.2, inset:'blasto',
+    labels:['cavidade','endometrio'], cap:'O blastocisto flutua na cavidade uterina',
+    html:`<div class="tag">Dia 4–5 · Cavidade uterina</div>
+      <h1>Blastocisto livre</h1>
+      <p class="lead">Dentro do útero, líquido entra na mórula e forma a <b>blastocele</b>: surge o blastocisto.</p>
+      <ul>
+        <li><b>Trofoblasto</b> (camada externa): formará parte da placenta.</li>
+        <li><b>Embrioblasto</b> (massa celular interna): formará o embrião.</li>
+        <li>Por cerca de 2 dias, o blastocisto flutua e se nutre das secreções das glândulas do endométrio.</li>
+      </ul>
+      <div class="box"><b>Tamanho real:</b> cerca de 0,1 a 0,2 mm, menor que um grão de sal. O modelo está bem aumentado.</div>` },
+
+  { nav:'Eclosão', day:'Dia 5–6', u:[uC2,uC3], foll:'luteo', mc:ROSE, mr:1.25, inset:'hatch',
+    labels:['endometrio','cavidade'], cap:'O blastocisto sai da zona pelúcida',
+    html:`<div class="tag">Dia 5–6</div>
+      <h1>Eclosão</h1>
+      <p class="lead">O blastocisto se expande e sai da <b>zona pelúcida</b>, como um pintinho saindo do ovo.</p>
+      <ul>
+        <li>Enzimas produzidas pelo <b>trofoblasto</b> abrem um buraco na zona pelúcida.</li>
+        <li>A expansão da blastocele empurra o embrião para fora.</li>
+        <li>Sem a eclosão, a implantação <b>não acontece</b>.</li>
+      </ul>
+      <div class="box"><b>Na fertilização in vitro</b>, às vezes se faz a “eclosão assistida”, abrindo a zona pelúcida com laser.</div>` },
+
+  { nav:'Nidação', day:'Dia 6–10', u:[uC3,1], move:[.5,4.5], dur:10, foll:'luteo', implant:true, mc:ROSE, mr:1.25, inset:'implant',
+    labels:['endometrio','miometrio','nidacao'], cap:'O blastocisto se implanta no endométrio',
+    html:`<div class="tag">Dia 6–10 · Endométrio</div>
+      <h1>Nidação (implantação)</h1>
+      <p class="lead">O blastocisto adere ao endométrio pelo polo embrionário, geralmente na <b>parede posterior</b> do corpo do útero.</p>
+      <ul>
+        <li>O trofoblasto se divide em <b>citotrofoblasto</b> e <b>sinciciotrofoblasto</b>.</li>
+        <li>O sinciciotrofoblasto invade o endométrio e forma <b>lacunas</b> que se enchem de sangue materno.</li>
+        <li>O endométrio reage (<b>reação decidual</b>) e passa a nutrir o embrião.</li>
+        <li>O sinciciotrofoblasto produz o hormônio <b>hCG</b>, que mantém o corpo lúteo funcionando.</li>
+      </ul>
+      <div class="box"><b>hCG</b> é o hormônio detectado nos testes de gravidez de farmácia.</div>` },
+
+  { nav:'Ectópica', day:'Quando dá errado', u:[uEc,uEc], foll:'luteo', ecto:true, mc:0xff6a7a, mr:1.25, inset:'ecto', off:[0,.4,1.8],
+    labels:['ecto','istmo'], cap:'Implantação fora do útero: gravidez ectópica',
+    html:`<div class="tag">Quando dá errado</div>
+      <h1>Gravidez <em>ectópica</em></h1>
+      <p class="lead">Se o transporte pela tuba falha, o blastocisto pode se implantar <b>fora do útero</b>.</p>
+      <ul>
+        <li>Mais de <b>90%</b> dos casos ocorrem na tuba uterina, principalmente na <b>ampola</b>.</li>
+        <li>Fatores de risco: inflamações e infecções da tuba (como a clamídia), endometriose e cirurgias anteriores na tuba.</li>
+        <li>A tuba não suporta o crescimento do embrião: há risco de <b>ruptura e hemorragia interna</b>.</li>
+      </ul>
+      <div class="box"><b>Emergência médica:</b> dor forte em um lado da barriga e sangramento no início da gravidez exigem atendimento imediato.</div>` },
+];
+STAGES.forEach(S => { S.dur ??= 7; S.move ??= [.6, S.dur - 1]; S.off ??= [0,.35,1.9]; S.mc ??= ROSE; S.mr ??= 1; });
+
+/* =====================================================================
+   INTERFACE
+   ===================================================================== */
+const panel = document.getElementById('panel'), dotsEl = document.getElementById('dots');
+const prevB = document.getElementById('prev'), nextB = document.getElementById('next'), playB = document.getElementById('play');
+const counter = document.getElementById('counter'), progress = document.getElementById('progress');
+const followB = document.getElementById('btnFollow'), wallB = document.getElementById('btnWall');
+const tripFill = document.getElementById('tripFill'), tripDot = document.getElementById('tripDot'), track = document.getElementById('track');
+const N = STAGES.length;
+let cur = -1, stageStart = 0, follow = true, auto = false, uNow = 0;
+let iRoot = null, ictx = null, iStart = 0, iDef = null;
+const clock = new THREE.Clock();
+let W = 1, H = 1;
+
+[['Ovário',0],['Ampola',uAmp],['Istmo',u4],['Útero',uC1]].forEach(([n,u]) => {
+  const t = document.createElement('div'); t.className = 'tick'; t.style.left = (u*100) + '%'; t.innerHTML = `<span>${n}</span>`; track.appendChild(t);
+});
+STAGES.forEach((s,i) => {
+  if(i===1 || i===9){ const sp = document.createElement('span'); sp.className = 'sep'; dotsEl.appendChild(sp); }
+  const b = document.createElement('button'); b.className = 'dot-b'; b.setAttribute('aria-label', s.nav);
+  b.innerHTML = `<span class="tip">${s.day} · ${s.nav}</span>`; b.onclick = () => { setAuto(false); goTo(i); }; dotsEl.appendChild(b);
+});
+const dotBtns = [...dotsEl.querySelectorAll('.dot-b')];
+
+let capText = '';
+function setCap(t){ t = t || ''; if(t === capText) return; capText = t; capEl.textContent = t; capEl.classList.toggle('show', !!t); }
+
+function buildInset(key){
+  if(iRoot){ disposeTree(iRoot); iRoot = null; }
+  iDef = key ? INSETS[key] : null;
+  insetEl.classList.toggle('off', !iDef);
+  if(!iDef) return;
+  ictx = { anims:[], labels:[], updaters:[], off:0 };
+  iRoot = new THREE.Group(); iScene.add(iRoot);
+  iDef.build(ictx, iRoot);
+  anim(ictx, iRoot, { fs:.7, ts:1, dur:.7 });
+  iCam.position.set(...(iDef.cam || [0,.9,5.4])); iCam.lookAt(...(iDef.look || [0,0,0]));
+  icapEl.textContent = iDef.cap;
+  iStart = clock.getElapsedTime();
+}
+
+function setFollicle(state){
+  graaf.visible = state === 'graaf' || state === 'anim'; graaf.scale.setScalar(.1);
+  luteo.visible = state === 'luteo'; luteo.scale.setScalar(.09);
+  burst.forEach(b => b.visible = false);
+}
+
+function goTo(i, force=false){
+  i = Math.max(0, Math.min(N-1, i));
+  if(i === cur && !force) return;
+  cur = i; const S = STAGES[i];
+  stageStart = clock.getElapsedTime();
+  setFollow(true);
+  setFollicle(S.foll);
+  core.material = M(S.mc, { roughness:.3, clearcoat:1 }); halo.material.color.set(S.mc);
+  marker.scale.setScalar(S.mr);
+  spermG.visible = !!S.sperm; flow.visible = !!S.flow;
+  decid.scale.set(.01,.01,1); decid.visible = !!S.implant;
+  ectoBulge.visible = ectoGlow.visible = !!S.ecto;
+  buildInset(S.inset);
+  setCap(S.cap);
+  panel.innerHTML = `<div class="inner">${S.html}</div>`;
+  fitPanel();
+  dotBtns.forEach((b,k) => { b.classList.toggle('act', k===i); b.classList.toggle('done', k<i); });
+  counter.innerHTML = `<b>${i+1}</b> / ${N}`;
+  progress.style.width = ((i+1)/N*100) + '%';
+  prevB.disabled = i === 0; nextB.disabled = i === N-1;
+  history.replaceState(null, '', '#' + (i+1));
+}
+function fitPanel(){
+  const inner = panel.querySelector('.inner'); if(!inner) return;
+  let z = 1; inner.style.zoom = 1;
+  while(panel.scrollHeight > panel.clientHeight + 1 && z > .72){ z -= .03; inner.style.zoom = z; }
+  panel.scrollTop = 0;
+}
+function setFollow(v){ follow = v; followB.classList.toggle('on', v); }
+function setAuto(v){
+  auto = v; playB.classList.toggle('on', v);
+  playB.innerHTML = v ? '⏸ <span>Pausar</span>' : '▶ <span>Viagem completa</span>';
+}
+
+prevB.onclick = () => { setAuto(false); goTo(cur-1); };
+nextB.onclick = () => { setAuto(false); goTo(cur+1); };
+playB.onclick = () => { if(auto){ setAuto(false); return; } setAuto(true); goTo(cur >= N-2 ? 0 : cur, true); };
+followB.onclick = () => setFollow(!follow);
+wallB.onclick = () => { frontWall.visible = !frontWall.visible; wallB.classList.toggle('on', frontWall.visible); };
+document.getElementById('btnReplay').onclick = () => goTo(cur, true);
+document.getElementById('btnFull').onclick = toggleFull;
+function toggleFull(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+addEventListener('keydown', e => {
+  if(['ArrowRight','PageDown'].includes(e.key)){ e.preventDefault(); setAuto(false); goTo(cur+1); }
+  else if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); setAuto(false); goTo(cur-1); }
+  else if(e.key === ' '){ e.preventDefault(); playB.onclick(); }
+  else if(e.key==='Home') goTo(0);
+  else if(e.key==='End') goTo(N-1);
+  else if(e.key==='f' || e.key==='F') toggleFull();
+  else if(e.key==='r' || e.key==='R') goTo(cur, true);
+  else if(e.key==='c' || e.key==='C') setFollow(!follow);
+  else if(e.key==='p' || e.key==='P') wallB.onclick();
+});
+controls.addEventListener('start', () => setFollow(false));
+
+const portraitMQ = matchMedia('(max-aspect-ratio: 1/1)');
+function resize(){
+  W = stageEl.clientWidth; H = stageEl.clientHeight;
+  renderer.setSize(W, H, false);
+  camera.aspect = W/H;
+  if(portraitMQ.matches) camera.setViewOffset(W, H, 0, H*.2, W, H);
+  else camera.setViewOffset(W, H, -W*.14, -H*.13, W, H);   // alvo abaixo e à esquerda da lupa
+  camera.updateProjectionMatrix();
+  const s = insetEl.clientWidth; iR.setSize(s, s, false); iCam.aspect = 1; iCam.updateProjectionMatrix();
+  fitPanel();
+}
+new ResizeObserver(resize).observe(stageEl); resize();
+
+/* =====================================================================
+   ANIMAÇÃO
+   ===================================================================== */
+const tmp = V(), side = V(), Xa = V(1,0,0), Za = V(0,0,1), goal = V();
+function runAnims(list, t){ for(const a of list){ const p = ease(clamp((t - a.delay)/a.dur)); a.obj.position.lerpVectors(a.fp, a.tp, p); a.obj.scale.lerpVectors(a.fs, a.ts, p); } }
+
+function updateStage(t, now){
+  const S = STAGES[cur];
+  // embrião
+  marker.visible = !!S.u && !(cur === 1 && t < 1.6);
+  if(S.u){
+    const p = ease(clamp((t - S.move[0])/(S.move[1] - S.move[0])));
+    uNow = S.u[0] + (S.u[1] - S.u[0])*p;
+    marker.position.copy(J.getPointAt(uNow));
+    if(S.implant) marker.position.lerp(IMP2, ease(clamp((t - 5)/2.5)));
+  }
+  if(S.mc2 && t > 6) { core.material = M(S.mc2, { roughness:.3, clearcoat:1 }); halo.material.color.set(S.mc2); }
+  let hs = .22 + Math.sin(now*3)*.03;
+  if(cur === 2 && t > 6 && t < 7.2) hs += Math.sin((t-6)/1.2*Math.PI)*.35;   // fecundação
+  halo.scale.set(hs, hs, 1);
+
+  // ovulação
+  if(S.foll === 'anim'){
+    if(t < 1.5){ graaf.visible = true; graaf.scale.setScalar(.1*(1 + .35*ease(t/1.5))); }
+    else { graaf.visible = false; luteo.visible = true; luteo.scale.setScalar(.09*ease(clamp((t-1.6)/2.5))); }
+    burst.forEach(b => { const q = (t - 1.5)/1.1; b.visible = q > 0 && q < 1;
+      if(b.visible){ b.position.copy(F).addScaledVector(b.userData.v, .25*ease(q)); b.scale.setScalar(.014*(1-q)); } });
+  }
+  // fímbrias balançando
+  const amp = cur === 1 ? .32 : .14;
+  fimbriae.forEach(f => { f.quaternion.copy(f.userData.q0).multiply(new THREE.Quaternion().setFromAxisAngle(Xa, Math.sin(now*1.6 + f.userData.ph)*amp)); });
+
+  // espermatozoides
+  if(S.sperm){
+    spTail.opacity = .85*(1 - clamp((t-7)/1.5));
+    sperm.forEach(s => {
+      const u = clamp((t - s.d)*s.v, 0, 1), vis = u > 0 && u < s.drop && t < 8.5;
+      s.head.visible = s.tail.visible = vis; if(!vis) return;
+      const P = SP.getPointAt(u), T = SP.getTangentAt(u);
+      side.crossVectors(T, Za).normalize();
+      P.addScaledVector(side, s.lat*(u < .45 ? .07 : .02) + Math.sin(t*9 + s.ph)*.008);
+      s.head.position.copy(P); s.head.quaternion.setFromUnitVectors(Xa, T);
+      const a = s.g.attributes.position.array;
+      for(let i=0;i<8;i++){ const d = .02 + i*.011, w = Math.sin(t*16 + s.ph - i*.9)*.004*i/3;
+        a[i*3] = P.x - T.x*d + side.x*w; a[i*3+1] = P.y - T.y*d + side.y*w; a[i*3+2] = P.z - T.z*d + side.z*w; }
+      s.g.attributes.position.needsUpdate = true;
+    });
+  }
+  // implantação
+  if(S.implant){ const q = ease(clamp((t - 5)/3)); const s = .02 + .5*q + Math.sin(now*3)*.04*q; decid.scale.set(s, s, 1); decid.material.opacity = .8; }
+  if(S.ecto){ const s = .1 + .02*Math.sin(now*3); ectoBulge.scale.setScalar(s); const g = .45 + .12*Math.sin(now*3); ectoGlow.scale.set(g, g, 1); }
+
+  // trajeto no topo
+  tripDot.style.left = (uNow*100) + '%'; tripFill.style.width = (uNow*100) + '%';
+  tripDot.style.opacity = S.u ? 1 : 0;
+
+  if(auto && t > S.dur + 3){ if(cur < N-2) goTo(cur+1); else setAuto(false); }
+}
+
+function updateFlow(dt){
+  if(!flow.visible) return;
+  for(let i=0;i<FN;i++){
+    flowS[i] -= dt*.05; if(flowS[i] < 0) flowS[i] += 1;
+    const P = TC.getPointAt(flowS[i]).addScaledVector(flowJ[i], tubeR(flowS[i])*.6);
+    flowPos.set([P.x, P.y, P.z], i*3);
+  }
+  flowGeo.attributes.position.needsUpdate = true;
+}
+
+function shownLabel(key){ return STAGES[cur].labels.includes(key); }
+let last = 0;
+function loop(){
+  requestAnimationFrame(loop);
+  const now = clock.getElapsedTime(), dt = Math.min(.05, now - last); last = now;
+  const t = now - stageStart;
+  updateStage(t, now);
+  updateFlow(dt);
+
+  if(follow){
+    const S = STAGES[cur], k = 1 - Math.exp(-dt*3);
+    const tg = S.target || (marker.visible ? marker.position : F);
+    controls.target.lerp(tg, k);
+    goal.copy(tg).add(tmp.set(...S.off)); camera.position.lerp(goal, k);
+  }
+  controls.update();
+  dust.rotation.y = now*.012;
+  renderer.render(scene, camera);
+
+  // lupa
+  if(iDef){
+    const it = now - iStart;
+    runAnims(ictx.anims, it); ictx.updaters.forEach(u => u(it));
+    iRoot.rotation.y = iDef.sway ? Math.sin(it*.45)*.5 : it*.35;
+    iR.render(iScene, iCam);
+  }
+
+  // rótulos
+  const dist0 = camera.position.distanceTo(controls.target);
+  for(const l of AL){
+    const on = shownLabel(l.key) && !(l.key === 'foliculo' && !graaf.visible) && !(l.key === 'luteo' && !luteo.visible);
+    if(!on){ l.el.style.opacity = 0; continue; }
+    l.o.getWorldPosition(tmp);
+    const behind = tmp.distanceTo(camera.position) > dist0 + 1.2;
+    tmp.project(camera);
+    const x = (tmp.x*.5 + .5)*W, y = (-tmp.y*.5 + .5)*H;
+    const sh = l.side === 'l' ? 'translate(-100%,-50%)' : l.side === 'c' ? 'translate(-50%,-50%)' : 'translate(0,-50%)';
+    l.el.style.transform = `translate(${x}px,${y}px) ${sh}`;
+    l.el.style.opacity = (tmp.z > 1 ? 0 : behind ? .25 : 1) * clamp((t - .6)/.5);
+  }
+
+  // linha ligando o embrião à lupa
+  if(iDef && marker.visible){
+    marker.getWorldPosition(tmp); tmp.project(camera);
+    const mx = (tmp.x*.5 + .5)*W, my = (-tmp.y*.5 + .5)*H;
+    const dr = deck.getBoundingClientRect(), cv = iR.domElement.getBoundingClientRect();
+    const cx = cv.left - dr.left + cv.width/2, cy = cv.top - dr.top + cv.height/2, R = cv.width/2;
+    const dx = mx - cx, dy = my - cy, d = Math.hypot(dx, dy) || 1;
+    const ok = d > R + 10 && tmp.z < 1;
+    leaderLine.setAttribute('x1', mx); leaderLine.setAttribute('y1', my);
+    leaderLine.setAttribute('x2', cx + dx/d*R); leaderLine.setAttribute('y2', cy + dy/d*R);
+    leaderLine.style.opacity = ok ? 1 : 0;
+  } else leaderLine.style.opacity = 0;
+}
+
+const start = parseInt(location.hash.slice(1)) - 1;
+goTo(isNaN(start) ? 0 : start);
+loop();
+
+</script>
+</body>
+</html>
